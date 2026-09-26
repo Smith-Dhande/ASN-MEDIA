@@ -59,6 +59,11 @@ export const Footer = () => {
                 </li>
               ))}
               <li>
+                <Link to="/terms" className="hover:text-[#C8A13A] transition-colors">
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
                 <Link to="/contact" className="hover:text-[#C8A13A] transition-colors">
                   Contact
                 </Link>
@@ -108,10 +113,26 @@ export const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom copyright & disclaimer */}
-        <div className="pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-[#66615A] gap-4">
+        {/* Bottom copyright & ClickInnovate credit */}
+        <div className="pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-[#66615A] gap-4 font-mono">
           <p>{siteConfig.copyright}</p>
-          <p className="font-mono text-[11px]">Designed with editorial restraint & cinematic focus.</p>
+          <div className="flex items-center gap-4 text-[11px]">
+            <Link to="/terms" className="hover:text-[#F7F5EF] transition-colors">
+              Terms & Conditions
+            </Link>
+            <span>•</span>
+            <p className="text-[#888]">
+              Website designed by{' '}
+              <a
+                href="https://clickinnovate.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#C8A13A] hover:underline font-semibold"
+              >
+                ClickInnovate
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>

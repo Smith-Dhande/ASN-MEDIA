@@ -93,6 +93,22 @@ html.lenis, html.lenis body {
   animation: adminPageFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Subtle ASN Ivory Shimmer for Skeleton States */
+@keyframes asnShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.asn-shimmer {
+  background: linear-gradient(90deg, #FAF8F3 25%, #EDE8DA 50%, #FAF8F3 75%);
+  background-size: 200% 100%;
+  animation: asnShimmer 2s infinite ease-in-out;
+}
+
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -106,5 +122,10 @@ html.lenis, html.lenis body {
 
   .animate-admin-page {
     animation: none !important;
+  }
+
+  .asn-shimmer {
+    animation: none !important;
+    background: #FAF8F3 !important;
   }
 }

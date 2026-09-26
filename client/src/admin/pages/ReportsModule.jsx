@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -15,12 +15,24 @@ import {
 } from 'recharts';
 import { useAdminData } from '../context/AdminDataContext';
 import { AdminCard } from '../components/ui/AdminCard';
+import { ReportsSkeleton } from '../components/ui/LoadingSkeleton';
 import { TrendingUp, Download, Calendar, DollarSign, Users, Briefcase, FileText, CheckCircle2 } from 'lucide-react';
 
 export const ReportsModule = () => {
   const { dashboardMetrics, clients, projects, payments } = useAdminData();
   const [selectedPeriod, setSelectedPeriod] = useState('This Quarter');
   const [exportNotice, setExportNotice] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => setLoading(false), 250);
+    return () => clearTimeout(timer);
+  }, [selectedPeriod]);
+
+  if (loading) {
+    return <ReportsSkeleton />;
+  }
 
   // Sample reporting monthly revenue data
   const revenueReportData = [

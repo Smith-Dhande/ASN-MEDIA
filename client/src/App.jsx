@@ -12,6 +12,8 @@ import { ServicesPage } from './pages/ServicesPage';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { Insights } from './pages/Insights';
+import { TermsPage } from './pages/TermsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 // Admin Imports
 import { AdminLayout } from './admin/components/layout/AdminLayout';
@@ -93,6 +95,9 @@ export function App() {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/insights" element={<Insights />} />
+          <Route path="/terms" element={<TermsPage />} />
+          {/* Public Catch-All 404 Route */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
 
         {/* ADMIN PANEL ROUTES (ISOLATED NAMESPACE) */}
@@ -152,6 +157,9 @@ export function App() {
           <Route path="settings/company" element={<SettingsModule />} />
           <Route path="settings/platform" element={<SettingsModule />} />
           <Route path="settings/backup" element={<SettingsModule />} />
+
+          {/* Admin Catch-All 404 Route */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </Router>

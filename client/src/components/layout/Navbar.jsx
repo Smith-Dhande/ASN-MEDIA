@@ -49,7 +49,7 @@ export const Navbar = () => {
         {/* Restrained Brand Logo */}
         <Link
           to="/"
-          className="group flex items-center gap-3 no-underline focus:outline-none focus:ring-2 focus:ring-[#C8A13A] rounded-sm"
+          className="group flex items-center gap-3 no-underline focus:outline-none focus:ring-0 active:outline-none rounded-sm"
         >
           <img
             src="/favicon.PNG"
@@ -74,7 +74,7 @@ export const Navbar = () => {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`relative py-1 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#C8A13A] rounded-sm ${
+                className={`relative py-1 transition-colors duration-200 focus:outline-none focus:ring-0 active:outline-none rounded-sm ${
                   isActive
                     ? 'text-[#C8A13A] font-semibold'
                     : `${textColorClass} opacity-80 hover:opacity-100 hover:text-[#C8A13A]`
@@ -92,7 +92,7 @@ export const Navbar = () => {
         {/* Mobile Hamburger Toggle */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className={`md:hidden p-2 focus:outline-none focus:ring-2 focus:ring-[#C8A13A] rounded-sm ${textColorClass}`}
+          className={`md:hidden p-2 focus:outline-none focus:ring-0 active:outline-none rounded-sm ${textColorClass}`}
           aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

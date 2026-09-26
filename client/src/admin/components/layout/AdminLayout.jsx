@@ -35,9 +35,26 @@ const AdminLayoutInner = () => {
         <main
           key={location.pathname}
           data-lenis-prevent="true"
-          className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-7 py-4 space-y-4 animate-admin-page"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-7 py-4 space-y-4 animate-admin-page flex flex-col justify-between"
         >
-          <Outlet />
+          <div>
+            <Outlet />
+          </div>
+
+          <footer className="pt-6 pb-2 border-t border-[#0A0A0A]/08 flex flex-col sm:flex-row items-center justify-between text-[11px] font-mono text-[#66615A] shrink-0 gap-2">
+            <span>© 2026 ASN Media Admin System</span>
+            <span>
+              Designed by{' '}
+              <a
+                href="https://clickinnovate.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#8E722A] hover:underline font-bold"
+              >
+                ClickInnovate
+              </a>
+            </span>
+          </footer>
         </main>
       </div>
 
