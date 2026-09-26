@@ -12,19 +12,19 @@ export const AdminCard = ({
 }) => {
   return (
     <div
-      className={`bg-white rounded-[6px] border border-[#0A0A0A]/12 shadow-xs transition-shadow ${className}`}
+      className={`bg-white rounded-xl border border-[#0A0A0A]/08 shadow-2xs transition-all duration-200 ${className}`}
       {...props}
     >
       {(title || subtitle || headerAction) && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#0A0A0A]/10">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#0A0A0A]/06">
           <div>
             {title && (
-              <h3 className="font-body text-sm font-bold text-[#0A0A0A] tracking-tight">
+              <h3 className="font-display text-base font-normal text-[#111111] tracking-tight">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="text-xs text-[#66615A] font-body mt-0.5">
+              <p className="text-[11px] text-[#685C43] font-body mt-0.5">
                 {subtitle}
               </p>
             )}
@@ -32,9 +32,9 @@ export const AdminCard = ({
           {headerAction && <div>{headerAction}</div>}
         </div>
       )}
-      <div className={noPadding ? '' : 'p-5'}>{children}</div>
+      <div className={noPadding ? '' : 'p-4'}>{children}</div>
       {footer && (
-        <div className="px-5 py-3 bg-[#F7F5EF]/60 border-t border-[#0A0A0A]/10 rounded-b-[6px]">
+        <div className="px-4 py-2.5 bg-[#FAF8F3] border-t border-[#0A0A0A]/06 rounded-b-xl">
           {footer}
         </div>
       )}

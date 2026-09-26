@@ -13,12 +13,12 @@ export const NotificationDropdown = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xs transition-colors focus:outline-none"
+        className="relative p-2 text-[#221C11] hover:bg-[#DBCDAA] rounded-xs transition-colors focus:outline-none"
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#C8A13A] ring-2 ring-[#0A0A0A] animate-pulse" />
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#8E722A] ring-2 ring-[#E5D9BC] animate-pulse" />
         )}
       </button>
 

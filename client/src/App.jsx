@@ -17,7 +17,17 @@ import { Insights } from './pages/Insights';
 import { AdminLayout } from './admin/components/layout/AdminLayout';
 import { AdminLogin } from './admin/pages/AdminLogin';
 import { AdminDashboard } from './admin/pages/AdminDashboard';
-import { AdminPlaceholder } from './admin/pages/AdminPlaceholder';
+import { ClientsModule } from './admin/pages/ClientsModule';
+import { EnquiriesModule } from './admin/pages/EnquiriesModule';
+import { PackagesServicesModule } from './admin/pages/PackagesServicesModule';
+import { ProjectsTasksModule } from './admin/pages/ProjectsTasksModule';
+import { PaymentsModule } from './admin/pages/PaymentsModule';
+import { ReviewScannersModule } from './admin/pages/ReviewScannersModule';
+import { ReportsModule } from './admin/pages/ReportsModule';
+import { NotificationsModule } from './admin/pages/NotificationsModule';
+import { StaffRolesModule } from './admin/pages/StaffRolesModule';
+import { ActivityLogsModule } from './admin/pages/ActivityLogsModule';
+import { SettingsModule } from './admin/pages/SettingsModule';
 
 // Scroll To Top component on route change
 const ScrollToTop = () => {
@@ -52,6 +62,9 @@ export function App() {
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       wheelMultiplier: 0.9,
+      prevent: (node) =>
+        node?.classList?.contains('admin-shell') ||
+        Boolean(node?.closest?.('.admin-shell')),
     });
 
     function raf(time) {
@@ -90,55 +103,55 @@ export function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
 
           {/* Clients Subsystem */}
-          <Route path="clients" element={<AdminPlaceholder moduleName="All Clients List" sectionCategory="Client Management" />} />
-          <Route path="clients/add" element={<AdminPlaceholder moduleName="Add Client Form" sectionCategory="Client Management" />} />
-          <Route path="clients/expiring" element={<AdminPlaceholder moduleName="Expiring Packages Warning" sectionCategory="Client Management" />} />
-          <Route path="clients/:id" element={<AdminPlaceholder moduleName="Client History & 360 View" sectionCategory="Client Management" />} />
+          <Route path="clients" element={<ClientsModule />} />
+          <Route path="clients/add" element={<ClientsModule />} />
+          <Route path="clients/expiring" element={<ClientsModule />} />
+          <Route path="clients/:id" element={<ClientsModule />} />
 
           {/* Leads & Enquiries Subsystem */}
-          <Route path="enquiries" element={<AdminPlaceholder moduleName="All Website Enquiries Inbox" sectionCategory="Leads & Enquiries" />} />
-          <Route path="enquiries/follow-ups" element={<AdminPlaceholder moduleName="Enquiry Follow-ups & Notes" sectionCategory="Leads & Enquiries" />} />
-          <Route path="enquiries/converted" element={<AdminPlaceholder moduleName="Converted Leads" sectionCategory="Leads & Enquiries" />} />
+          <Route path="enquiries" element={<EnquiriesModule />} />
+          <Route path="enquiries/follow-ups" element={<EnquiriesModule />} />
+          <Route path="enquiries/converted" element={<EnquiriesModule />} />
 
           {/* Packages & Services Subsystem */}
-          <Route path="packages" element={<AdminPlaceholder moduleName="Packages List" sectionCategory="Packages & Services" />} />
-          <Route path="services" element={<AdminPlaceholder moduleName="Services List" sectionCategory="Packages & Services" />} />
-          <Route path="assignments" element={<AdminPlaceholder moduleName="Client Assignments" sectionCategory="Packages & Services" />} />
+          <Route path="packages" element={<PackagesServicesModule />} />
+          <Route path="services" element={<PackagesServicesModule />} />
+          <Route path="assignments" element={<PackagesServicesModule />} />
 
           {/* Projects & Tasks Subsystem */}
-          <Route path="projects" element={<AdminPlaceholder moduleName="Active Projects List" sectionCategory="Projects & Tasks" />} />
-          <Route path="tasks" element={<AdminPlaceholder moduleName="Kanban Task Board" sectionCategory="Projects & Tasks" />} />
-          <Route path="workload" element={<AdminPlaceholder moduleName="Team Workload Distribution" sectionCategory="Projects & Tasks" />} />
+          <Route path="projects" element={<ProjectsTasksModule />} />
+          <Route path="tasks" element={<ProjectsTasksModule />} />
+          <Route path="workload" element={<ProjectsTasksModule />} />
 
           {/* Payments Subsystem */}
-          <Route path="payments" element={<AdminPlaceholder moduleName="Transaction Ledger" sectionCategory="Payments" />} />
-          <Route path="payments/outstanding" element={<AdminPlaceholder moduleName="Outstanding Payments Alert" sectionCategory="Payments" />} />
-          <Route path="payments/due" element={<AdminPlaceholder moduleName="Upcoming Due Payments" sectionCategory="Payments" />} />
+          <Route path="payments" element={<PaymentsModule />} />
+          <Route path="payments/outstanding" element={<PaymentsModule />} />
+          <Route path="payments/due" element={<PaymentsModule />} />
 
           {/* Review Scanners Subsystem */}
-          <Route path="scanners" element={<AdminPlaceholder moduleName="Google Review Scanners List" sectionCategory="AI Review Scanners" />} />
-          <Route path="scanners/create" element={<AdminPlaceholder moduleName="Create Place Review Scanner" sectionCategory="AI Review Scanners" />} />
-          <Route path="scanners/:id" element={<AdminPlaceholder moduleName="Scanner Detail & Sentiment Analytics" sectionCategory="AI Review Scanners" />} />
+          <Route path="scanners" element={<ReviewScannersModule />} />
+          <Route path="scanners/create" element={<ReviewScannersModule />} />
+          <Route path="scanners/:id" element={<ReviewScannersModule />} />
 
           {/* Reports & Analytics */}
-          <Route path="reports" element={<AdminPlaceholder moduleName="Reports & Business Analytics" sectionCategory="Analytics" />} />
+          <Route path="reports" element={<ReportsModule />} />
 
           {/* Notifications */}
-          <Route path="notifications" element={<AdminPlaceholder moduleName="System Notifications Feed" sectionCategory="Notifications" />} />
+          <Route path="notifications" element={<NotificationsModule />} />
 
           {/* Staff & Roles Subsystem */}
-          <Route path="staff" element={<AdminPlaceholder moduleName="Staff Accounts" sectionCategory="Staff & Roles" />} />
-          <Route path="staff/permissions" element={<AdminPlaceholder moduleName="Role Permissions Matrix" sectionCategory="Staff & Roles" />} />
+          <Route path="staff" element={<StaffRolesModule />} />
+          <Route path="staff/permissions" element={<StaffRolesModule />} />
 
           {/* Activity Logs */}
-          <Route path="activity" element={<AdminPlaceholder moduleName="System Activity & Audit Trail" sectionCategory="Security & Audit" />} />
+          <Route path="activity" element={<ActivityLogsModule />} />
 
           {/* System Settings Subsystem */}
-          <Route path="settings" element={<AdminPlaceholder moduleName="Admin Profile & Settings" sectionCategory="Settings" />} />
-          <Route path="settings/profile" element={<AdminPlaceholder moduleName="Admin Profile" sectionCategory="Settings" />} />
-          <Route path="settings/company" element={<AdminPlaceholder moduleName="Company Info Settings" sectionCategory="Settings" />} />
-          <Route path="settings/platform" element={<AdminPlaceholder moduleName="Platform Configuration" sectionCategory="Settings" />} />
-          <Route path="settings/backup" element={<AdminPlaceholder moduleName="Data Backup & Recovery UI" sectionCategory="Settings" />} />
+          <Route path="settings" element={<Navigate to="/admin/settings/profile" replace />} />
+          <Route path="settings/profile" element={<SettingsModule />} />
+          <Route path="settings/company" element={<SettingsModule />} />
+          <Route path="settings/platform" element={<SettingsModule />} />
+          <Route path="settings/backup" element={<SettingsModule />} />
         </Route>
       </Routes>
     </Router>

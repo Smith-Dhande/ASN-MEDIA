@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 const moduleSubNavConfig = {
@@ -66,34 +66,91 @@ const moduleSubNavConfig = {
 export const ModuleSubNav = () => {
   const location = useLocation();
   const pathSegments = location.pathname.split('/').filter(Boolean);
-  
-  // Find which top module key matches current route
-  const moduleKey = pathSegments[1]; // e.g. 'clients', 'enquiries', 'packages', 'projects', etc.
+  const moduleKey = pathSegments[1];
 
   const subItems = moduleSubNavConfig[moduleKey];
+
+  const navRef = useRef(null);
+  const tabRefs = useRef([]);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+
+  const activeIndex = subItems
+    ? subItems.findIndex((item) =>
+        item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
+      )
+    : -1;
+
+  useLayoutEffect(() => {
+    if (activeIndex >= 0 && tabRefs.current[activeIndex] && navRef.current) {
+      const navRect = navRef.current.getBoundingClientRect();
+      const tabRect = tabRefs.current[activeIndex].getBoundingClientRect();
+      setIndicatorStyle({
+        left: tabRect.left - navRect.left,
+        width: tabRect.width,
+        opacity: 1,
+      });
+    } else {
+      setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+    }
+  }, [location.pathname, activeIndex, moduleKey]);
 
   if (!subItems || subItems.length === 0) return null;
 
   return (
-    <div className="bg-white border-b border-[#0A0A0A]/12 px-4 sm:px-6 mb-6 shadow-2xs">
-      <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none" aria-label="Contextual Sub-Navigation">
-        {subItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.exact}
-            className={({ isActive }) =>
-              `py-2.5 px-4 text-xs font-mono font-semibold uppercase tracking-wider border-b-2 transition-all shrink-0 focus:outline-none ${
-                isActive
-                  ? 'border-[#C8A13A] text-[#0A0A0A] font-bold bg-[#F7F5EF]/60'
-                  : 'border-transparent text-[#66615A] hover:text-[#0A0A0A] hover:border-[#0A0A0A]/20'
-              }`
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+    <div className="bg-[#FAF8F3] border-b border-[#0A0A0A]/08 px-4 sm:px-6 shrink-0 relative">
+      <div className="max-w-7xl mx-auto relative">
+        <nav
+          ref={navRef}
+          className="flex items-center gap-2 overflow-x-auto scrollbar-none relative pt-2 pb-0.5"
+          aria-label="Contextual Sub-Navigation"
+        >
+          {/* Animated Sliding Organic Water-Drop Tab Container */}
+          {indicatorStyle.opacity === 1 && (
+            <div
+              className="absolute top-2 bottom-0 transition-all duration-300 ease-out pointer-events-none z-10 motion-reduce:transition-none"
+              style={{
+                left: `${indicatorStyle.left}px`,
+                width: `${indicatorStyle.width}px`,
+              }}
+            >
+              {/* Left Concave Water-Drop Fillet Curve */}
+              <div className="absolute -left-2.5 bottom-0 w-2.5 h-2.5 bg-white pointer-events-none overflow-hidden">
+                <div className="w-full h-full bg-[#FAF8F3] rounded-br-[10px]" />
+              </div>
+
+              {/* Main Active Organic Tab Body */}
+              <div className="w-full h-full bg-white rounded-t-xl shadow-2xs border-t border-x border-[#0A0A0A]/06" />
+
+              {/* Right Concave Water-Drop Fillet Curve */}
+              <div className="absolute -right-2.5 bottom-0 w-2.5 h-2.5 bg-white pointer-events-none overflow-hidden">
+                <div className="w-full h-full bg-[#FAF8F3] rounded-bl-[10px]" />
+              </div>
+            </div>
+          )}
+
+          {/* Nav Items Interactive Layer */}
+          {subItems.map((item, index) => {
+            const isActive =
+              item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
+
+            return (
+              <NavLink
+                key={item.path}
+                ref={(el) => (tabRefs.current[index] = el)}
+                to={item.path}
+                end={item.exact}
+                className={`relative z-20 py-2.5 px-4 text-xs font-mono tracking-wider uppercase transition-colors duration-200 shrink-0 focus:outline-none no-underline ${
+                  isActive
+                    ? 'text-[#111111] font-bold'
+                    : 'text-[#685C43] hover:text-[#111111] font-semibold'
+                }`}
+              >
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 };

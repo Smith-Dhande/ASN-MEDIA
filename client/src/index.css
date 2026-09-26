@@ -77,6 +77,22 @@ html.lenis, html.lenis body {
   pointer-events: none;
 }
 
+/* Admin Page Content Transition */
+@keyframes adminPageFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-admin-page {
+  animation: adminPageFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -86,5 +102,9 @@ html.lenis, html.lenis body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .animate-admin-page {
+    animation: none !important;
   }
 }

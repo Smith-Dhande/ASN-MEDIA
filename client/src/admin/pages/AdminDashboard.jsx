@@ -1,22 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import { KpiCard } from '../components/ui/KpiCard';
-import { AdminCard } from '../components/ui/AdminCard';
 import { DataTable } from '../components/ui/DataTable';
 import { StatusBadge } from '../components/ui/StatusBadge';
-import { ActivityTimeline } from '../components/widgets/ActivityTimeline';
+import { RevenueBarLineChart } from '../components/charts/RevenueBarLineChart';
+import { ClientGrowthAreaChart } from '../components/charts/ClientGrowthAreaChart';
+import { ProjectStatusDonutWidget } from '../components/widgets/ProjectStatusDonutWidget';
 import {
   Users,
   Inbox,
   Kanban,
-  Package,
   CreditCard,
-  QrCode,
   AlertTriangle,
-  Clock,
-  ArrowRight,
-  TrendingUp,
   Calendar,
+  CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -28,43 +26,60 @@ export const AdminDashboard = () => {
     projects,
     tasks,
     payments,
-    activityLogs,
     dateRangeFilter,
     setDateRangeFilter,
   } = useAdminData();
 
   const navigate = useNavigate();
+  const [dataTab, setDataTab] = useState('enquiries');
 
-  const dateFilterOptions = ['This Month', 'Last 30 Days', 'This Quarter', 'All Time'];
+  const datePillOptions = [
+    { id: 'Day', label: 'Day' },
+    { id: 'Week', label: 'Week' },
+    { id: 'Month', label: 'Month' },
+    { id: 'Year', label: 'Year' },
+  ];
 
-  // Data subsets for Dashboard Summary Widgets
-  const recentEnquiries = enquiries.slice(0, 4);
-  const recentClients = clients.slice(0, 4);
-  const expiringClients = clients.filter(
-    (c) => c.expiryDate && (c.expiryDate.startsWith('2026-04') || c.expiryDate.startsWith('2026-05'))
-  );
-  const overduePayments = payments.filter((p) => p.status === 'Overdue');
-  const urgentTasks = tasks.filter((t) => t.status !== 'Completed' && t.priority === 'High');
+  // Data subsets for Summary Tables
+  const recentEnquiries = enquiries.slice(0, 5);
+  const recentClients = clients.slice(0, 5);
+  const urgentTasks = tasks.filter((t) => t.status !== 'Completed').slice(0, 5);
 
   // Columns definition for Recent Enquiries Table
   const enquiryColumns = [
     {
-      header: 'LEAD NAME',
+      header: 'LEAD & CONTACT',
       key: 'name',
       render: (row) => (
-        <div>
-          <span className="font-bold text-[#0A0A0A] block">{row.name}</span>
-          <span className="text-[11px] text-[#66615A] font-mono">{row.email}</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-[#111111] text-[#F7F5EF] font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-[#8E722A]/40">
+            {row.name ? row.name.charAt(0) : 'L'}
+          </div>
+          <div>
+            <span className="font-bold text-[#111111] block font-body text-xs">{row.name}</span>
+            <span className="text-[10px] text-[#685C43] font-mono">{row.email}</span>
+          </div>
         </div>
       ),
     },
-    { header: 'COMPANY', key: 'company' },
     {
-      header: 'SERVICE',
+      header: 'COMPANY',
+      key: 'company',
+      render: (row) => <span className="font-body text-xs text-[#221C11] font-semibold">{row.company}</span>,
+    },
+    {
+      header: 'SERVICE REQUESTED',
       key: 'serviceRequested',
       render: (row) => (
-        <span className="font-mono text-[11px] text-[#8E722A]">{row.serviceRequested}</span>
+        <span className="font-mono text-[10px] font-bold text-[#8E722A] bg-[#F7F5EF] px-2 py-0.5 rounded-full border border-[#D5C7A5]/50">
+          {row.serviceRequested}
+        </span>
       ),
+    },
+    {
+      header: 'SUBMITTED DATE',
+      key: 'dateSubmitted',
+      render: (row) => <span className="font-mono text-[10px] text-[#685C43]">{row.dateSubmitted || '2026-09-26'}</span>,
     },
     {
       header: 'STATUS',
@@ -76,28 +91,38 @@ export const AdminDashboard = () => {
   // Columns definition for Recent Clients Table
   const clientColumns = [
     {
-      header: 'CLIENT & COMPANY',
+      header: 'CLIENT & PORTFOLIO',
       key: 'name',
       render: (row) => (
-        <div>
-          <span className="font-bold text-[#0A0A0A] block">{row.name}</span>
-          <span className="text-[11px] text-[#66615A]">{row.company}</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-[#E5D9BC] text-[#111111] font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-[#8E722A]">
+            {row.name ? row.name.charAt(0) : 'C'}
+          </div>
+          <div>
+            <span className="font-bold text-[#111111] block font-body text-xs">{row.name}</span>
+            <span className="text-[10px] text-[#685C43]">{row.company}</span>
+          </div>
         </div>
       ),
     },
     {
-      header: 'PACKAGE ASSIGNED',
+      header: 'ASSIGNED PACKAGE',
       key: 'packageAssigned',
       render: (row) => (
-        <span className="font-mono text-[11px] text-[#8E722A]">{row.packageAssigned}</span>
+        <span className="font-mono text-[10px] font-bold text-[#8E722A]">{row.packageAssigned}</span>
       ),
     },
     {
-      header: 'RETAINER',
+      header: 'MONTHLY RETAINER',
       key: 'monthlyRetainer',
       render: (row) => (
-        <span className="font-mono font-bold">${row.monthlyRetainer.toLocaleString()}/mo</span>
+        <span className="font-mono font-bold text-[#111111] text-xs">${row.monthlyRetainer.toLocaleString()}/mo</span>
       ),
+    },
+    {
+      header: 'EXPIRY DATE',
+      key: 'expiryDate',
+      render: (row) => <span className="font-mono text-[10px] text-[#685C43]">{row.expiryDate || 'N/A'}</span>,
     },
     {
       header: 'STATUS',
@@ -107,258 +132,215 @@ export const AdminDashboard = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* 1. Executive Top Bar & Date Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#0A0A0A]/12">
+    <div className="space-y-4 animate-fadeIn pb-8 font-body">
+      {/* 1. TOP HEADER & DATE FILTER ROW */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#0A0A0A]/08">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-xs font-bold text-[#8E722A] uppercase tracking-wider">
-              OPERATIONS DASHBOARD
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="font-mono text-[9px] font-bold text-[#8E722A] uppercase tracking-widest">
+              ASN MEDIA • EXECUTIVE COMMAND CENTER
             </span>
-            <span className="text-[#0A0A0A]/30">•</span>
-            <span className="text-xs font-mono text-[#66615A]">SYSTEM OVERVIEW</span>
+            <span className="text-[#0A0A0A]/20">•</span>
+            <span className="text-[10px] font-mono text-[#685C43]">RECHARTS ANALYTICS ENGINE</span>
           </div>
-          <h1 className="font-display text-4xl text-[#0A0A0A] font-normal tracking-tight">
-            Business Performance & Activity
+          <h1 className="font-display text-2xl sm:text-3xl text-[#111111] font-normal tracking-tight">
+            Dashboard
           </h1>
         </div>
 
-        {/* Date Range Selector */}
-        <div className="flex items-center gap-2 bg-white p-1.5 rounded-xs border border-[#0A0A0A]/14 shadow-xs">
-          <Calendar className="w-4 h-4 text-[#8E722A] ml-2 shrink-0" />
-          <span className="text-xs font-mono text-[#66615A] mr-1 hidden md:inline">FILTER:</span>
-          {dateFilterOptions.map((opt) => (
+        {/* Date Filter Row Pill Group */}
+        <div className="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-xl border border-[#0A0A0A]/06 shadow-2xs">
+          {datePillOptions.map((pill) => (
             <button
-              key={opt}
-              onClick={() => setDateRangeFilter(opt)}
-              className={`px-2.5 py-1 text-[11px] font-mono font-semibold uppercase tracking-wider rounded-xs transition-colors ${
-                dateRangeFilter === opt
-                  ? 'bg-[#0A0A0A] text-[#F7F5EF]'
-                  : 'text-[#66615A] hover:text-[#0A0A0A] hover:bg-[#F7F5EF]'
+              key={pill.id}
+              onClick={() => setDateRangeFilter(pill.id)}
+              className={`px-3 py-1 text-[11px] font-mono font-semibold tracking-wider rounded-lg transition-all duration-200 cursor-pointer ${
+                dateRangeFilter === pill.id || (dateRangeFilter === 'This Month' && pill.id === 'Month')
+                  ? 'bg-[#111111] text-[#F7F5EF] shadow-xs'
+                  : 'text-[#685C43] hover:text-[#111111] hover:bg-[#F7F5EF]'
               }`}
             >
-              {opt}
+              {pill.label}
             </button>
           ))}
+
+          {/* Custom Date Range Pill */}
+          <div className="flex items-center gap-1.5 pl-2 pr-2.5 py-1 bg-[#FAF8F3] text-[#221C11] rounded-lg border border-[#0A0A0A]/06 text-[11px] font-mono font-semibold">
+            <Calendar className="w-3.5 h-3.5 text-[#8E722A]" />
+            <span>1 Sep 2026 – 30 Sep 2026</span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Primary KPI Metrics Grid (11 Required Business Metrics) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. CORE EXECUTIVE KPI ROW (6 Essential Business Metrics Only) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Metric 1: Total Payment Collected (Featured Dark Card) */}
+        <KpiCard
+          isFeatured
+          label="Total Payment Collected"
+          value={`$${dashboardMetrics.totalPaymentCollected.toLocaleString()}`}
+          trend={+14.5}
+          trendLabel="vs last month"
+          icon={CreditCard}
+          to="/admin/payments"
+        />
+
+        {/* Metric 2: Outstanding Payments */}
+        <KpiCard
+          label="Outstanding Payments"
+          value={`$${dashboardMetrics.outstandingPayments.toLocaleString()}`}
+          trendLabel="4 invoices overdue"
+          icon={AlertTriangle}
+          to="/admin/payments/outstanding"
+          accentColor="crimson"
+        />
+
+        {/* Metric 3: Total Clients */}
         <KpiCard
           label="Total Clients"
           value={dashboardMetrics.totalClients}
-          trend={+12}
           trendLabel="active & retainers"
           icon={Users}
           to="/admin/clients"
           accentColor="gold"
         />
 
+        {/* Metric 4: Active Clients */}
         <KpiCard
-          label="Active Retainers"
+          label="Active Clients"
           value={dashboardMetrics.activeClients}
-          trend={+8}
-          trendLabel="generating MRR"
+          trendLabel="active retainers"
           icon={Users}
           to="/admin/clients"
           accentColor="emerald"
         />
 
+        {/* Metric 5: New Website Enquiries */}
         <KpiCard
-          label="New Enquiries"
+          label="New Website Enquiries"
           value={dashboardMetrics.newEnquiries}
-          trend={+25}
           trendLabel="pending review"
           icon={Inbox}
           to="/admin/enquiries"
           accentColor="amber"
         />
 
+        {/* Metric 6: Active Projects */}
         <KpiCard
           label="Active Projects"
           value={dashboardMetrics.activeProjects}
-          trend={+5}
           trendLabel="in production"
           icon={Kanban}
           to="/admin/projects"
           accentColor="gold"
         />
-
-        <KpiCard
-          label="Collected Revenue"
-          value={`$${dashboardMetrics.totalPaymentCollected.toLocaleString()}`}
-          trend={+14.5}
-          trendLabel="YTD payments"
-          icon={CreditCard}
-          to="/admin/payments"
-          accentColor="emerald"
-        />
-
-        <KpiCard
-          label="Outstanding Due"
-          value={`$${dashboardMetrics.outstandingPayments.toLocaleString()}`}
-          trend={-4.2}
-          trendLabel="requires collection"
-          icon={AlertTriangle}
-          to="/admin/payments/outstanding"
-          accentColor="crimson"
-        />
-
-        <KpiCard
-          label="Expiring Packages"
-          value={dashboardMetrics.expiringPackages}
-          trendLabel="within 30 days"
-          icon={Clock}
-          to="/admin/clients/expiring"
-          accentColor="amber"
-        />
-
-        <KpiCard
-          label="Active Review Scanners"
-          value={dashboardMetrics.activeReviewScanners}
-          trendLabel="Google Place monitors"
-          icon={QrCode}
-          to="/admin/scanners"
-          accentColor="charcoal"
-        />
       </div>
 
-      {/* 3. High-Priority Action Alerts Banner */}
-      {(expiringClients.length > 0 || overduePayments.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {expiringClients.length > 0 && (
-            <div className="p-4 bg-amber-50 border border-amber-300 rounded-[6px] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-amber-800 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold font-mono text-amber-900 uppercase">
-                    Expiring Retainers ({expiringClients.length})
-                  </h4>
-                  <p className="text-xs text-amber-800 font-body">
-                    {expiringClients.map((c) => c.name).join(', ')} require renewal outreach.
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/admin/clients/expiring"
-                className="text-xs font-mono font-bold text-amber-900 underline uppercase hover:text-black shrink-0 ml-2"
-              >
-                Review →
-              </Link>
-            </div>
-          )}
-
-          {overduePayments.length > 0 && (
-            <div className="p-4 bg-red-50 border border-red-300 rounded-[6px] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-800 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold font-mono text-red-900 uppercase">
-                    Overdue Invoices ({overduePayments.length})
-                  </h4>
-                  <p className="text-xs text-red-800 font-body">
-                    {overduePayments.map((p) => `${p.clientName} ($${p.amount})`).join(', ')} overdue.
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/admin/payments/outstanding"
-                className="text-xs font-mono font-bold text-red-900 underline uppercase hover:text-black shrink-0 ml-2"
-              >
-                Collect →
-              </Link>
-            </div>
-          )}
+      {/* 3. MAIN ANALYTICS CENTERPIECE & PROJECT STATUS DONUT WIDGET */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* Visual Centerpiece: Recharts Revenue Bar Chart (8 Cols) */}
+        <div className="lg:col-span-8">
+          <RevenueBarLineChart />
         </div>
-      )}
 
-      {/* 4. Main Tables Dual Column Spread */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Recent Enquiries Inbox (6 Cols) */}
-        <div className="lg:col-span-6 space-y-4">
-          <AdminCard
-            title="Recent Website Enquiries"
-            subtitle="Latest incoming project submissions"
-            noPadding
-            headerAction={
-              <Link
-                to="/admin/enquiries"
-                className="text-xs font-mono font-bold text-[#8E722A] hover:text-[#0A0A0A] flex items-center gap-1 uppercase"
-              >
-                <span>View Inbox</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            }
-          >
+        {/* Project Status Donut Widget (4 Cols) */}
+        <div className="lg:col-span-4 h-full">
+          <ProjectStatusDonutWidget />
+        </div>
+      </div>
+
+      {/* 4. CLIENT GROWTH AREA STREAM */}
+      <div>
+        <ClientGrowthAreaChart />
+      </div>
+
+      {/* 5. RECENT OPERATIONS ACTIVITY (Editorial Data Presentation) */}
+      <div className="bg-white rounded-xl p-5 shadow-2xs border border-[#0A0A0A]/06">
+        {/* Table Header & Section Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#0A0A0A]/06">
+          <div>
+            <span className="font-mono text-[9px] font-bold text-[#8E722A] uppercase tracking-wider block mb-0.5">
+              DATA RECORDS & AUDIT
+            </span>
+            <h2 className="font-display text-lg sm:text-xl font-normal text-[#111111]">
+              Recent Operations Activity
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* View Filter Pills */}
+            <div className="flex items-center gap-1 bg-[#F7F5EF] p-1 rounded-lg border border-[#0A0A0A]/06">
+              {[
+                { id: 'enquiries', label: 'Enquiries Inbox' },
+                { id: 'clients', label: 'Recent Clients' },
+                { id: 'tasks', label: 'Urgent Tasks' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setDataTab(tab.id)}
+                  className={`px-2.5 py-1 text-[11px] font-mono font-semibold uppercase tracking-wider rounded-md transition-all duration-200 cursor-pointer ${
+                    dataTab === tab.id
+                      ? 'bg-[#111111] text-[#F7F5EF] shadow-2xs'
+                      : 'text-[#685C43] hover:text-[#111111] hover:bg-[#E5D9BC]/40'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => navigate(dataTab === 'enquiries' ? '/admin/enquiries' : dataTab === 'clients' ? '/admin/clients' : '/admin/tasks')}
+              className="p-1.5 rounded-lg bg-[#FAF8F3] hover:bg-[#111111] text-[#221C11] hover:text-[#F7F5EF] border border-[#0A0A0A]/08 transition-colors"
+              title="Open full page"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Editorial Table Content depending on active tab */}
+        <div className="pt-2">
+          {dataTab === 'enquiries' && (
             <DataTable
               columns={enquiryColumns}
               data={recentEnquiries}
               onRowClick={() => navigate('/admin/enquiries')}
             />
-          </AdminCard>
-        </div>
+          )}
 
-        {/* Right Column: Active Client Portfolio (6 Cols) */}
-        <div className="lg:col-span-6 space-y-4">
-          <AdminCard
-            title="Active Client Retainers"
-            subtitle="Recently onboarded client accounts"
-            noPadding
-            headerAction={
-              <Link
-                to="/admin/clients"
-                className="text-xs font-mono font-bold text-[#8E722A] hover:text-[#0A0A0A] flex items-center gap-1 uppercase"
-              >
-                <span>All Clients</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            }
-          >
+          {dataTab === 'clients' && (
             <DataTable
               columns={clientColumns}
               data={recentClients}
               onRowClick={(row) => navigate(`/admin/clients/${row.id}`)}
             />
-          </AdminCard>
-        </div>
-      </div>
+          )}
 
-      {/* 5. Bottom Section: Production Tasks & Audit Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Urgent Tasks Stream (7 Cols) */}
-        <div className="lg:col-span-7">
-          <AdminCard
-            title="Urgent Production Tasks"
-            subtitle="High-priority deliverables due this week"
-            headerAction={
-              <Link
-                to="/admin/tasks"
-                className="text-xs font-mono font-bold text-[#8E722A] hover:text-[#0A0A0A] flex items-center gap-1 uppercase"
-              >
-                <span>Task Board</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            }
-          >
-            <div className="space-y-3">
+          {dataTab === 'tasks' && (
+            <div className="divide-y divide-[#0A0A0A]/06">
               {urgentTasks.map((t) => (
                 <div
                   key={t.id}
                   onClick={() => navigate('/admin/tasks')}
-                  className="p-3 bg-[#F7F5EF]/60 rounded-xs border border-[#0A0A0A]/10 flex items-center justify-between gap-3 hover:bg-[#F7F5EF] cursor-pointer transition-colors"
+                  className="py-2.5 px-1 flex items-center justify-between gap-3 cursor-pointer transition-colors hover:bg-[#FAF8F3] rounded-md"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-[#0A0A0A] text-xs">{t.title}</span>
-                      <StatusBadge status={t.priority} />
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-md bg-[#E5D9BC]/50 text-[#8E722A]">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-[11px] text-[#66615A] font-body">
-                      Client: {t.clientName} • Assigned to: <strong className="text-[#0A0A0A]">{t.assignee}</strong>
-                    </span>
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-bold text-[#111111] text-xs font-body">{t.title}</span>
+                        <StatusBadge status={t.priority} />
+                      </div>
+                      <span className="text-[11px] text-[#685C43] font-body">
+                        Client: <strong className="text-[#111111]">{t.clientName}</strong> • Assigned: {t.assignee}
+                      </span>
+                    </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-mono text-[11px] text-[#8E722A] font-semibold block">
+                    <span className="font-mono text-[10px] text-[#8E722A] font-bold block mb-0.5">
                       Due {t.dueDate}
                     </span>
                     <StatusBadge status={t.status} />
@@ -366,26 +348,7 @@ export const AdminDashboard = () => {
                 </div>
               ))}
             </div>
-          </AdminCard>
-        </div>
-
-        {/* System Activity Stream (5 Cols) */}
-        <div className="lg:col-span-5">
-          <AdminCard
-            title="Recent Activity Log"
-            subtitle="Real-time system event audit stream"
-            headerAction={
-              <Link
-                to="/admin/activity"
-                className="text-xs font-mono font-bold text-[#8E722A] hover:text-[#0A0A0A] flex items-center gap-1 uppercase"
-              >
-                <span>Audit Logs</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            }
-          >
-            <ActivityTimeline logs={activityLogs} limit={4} />
-          </AdminCard>
+          )}
         </div>
       </div>
     </div>
