@@ -12,6 +12,7 @@ export const siteConfig = {
     { label: "Services", path: "/services" },
     { label: "About", path: "/about" },
     { label: "Insights", path: "/insights" },
+    { label: "Contact", path: "/contact" },
   ],
   socials: [
     { label: "Instagram", url: "https://instagram.com/asnmedia", handle: "@asnmedia" },

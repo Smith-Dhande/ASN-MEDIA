@@ -42,7 +42,7 @@ export const servicesData = [
       { step: "02", name: "Production Shoot", detail: "Executing high-efficiency multi-format creative shoots on location or in studio." },
       { step: "03", name: "Post-Production", detail: "Color grading, sound design, typography overlays, and platform optimization." }
     ],
-    featuredMedia: "https://images.unsplash.com/photo-1542744094-3a31b272c490?q=80&w=1400&auto=format&fit=crop"
+    featuredMedia: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?q=80&w=1400&auto=format&fit=crop"
   },
   {
     id: "video-production",

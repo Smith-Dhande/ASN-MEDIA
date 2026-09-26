@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ArrowUpRight } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { siteConfig } from '../../data/site';
 
 export const Navbar = () => {
@@ -88,17 +88,6 @@ export const Navbar = () => {
             );
           })}
         </nav>
-
-        {/* Desktop CTA Button */}
-        <div className="hidden md:flex items-center">
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C8A13A] text-[#0A0A0A] text-xs font-bold tracking-widest uppercase rounded-[4px] hover:bg-[#FFFFFF] hover:text-[#0A0A0A] transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-[#C8A13A] shadow-lg"
-          >
-            LET'S TALK
-            <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </Link>
-        </div>
 
         {/* Mobile Hamburger Toggle */}
         <button

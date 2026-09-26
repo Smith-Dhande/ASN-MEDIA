@@ -4,6 +4,7 @@ import { ServiceList } from '../components/sections/ServiceList';
 import { Showreel } from '../components/sections/Showreel';
 import { Philosophy } from '../components/sections/Philosophy';
 import { SelectedWork } from '../components/sections/SelectedWork';
+import { ServicesCarousel } from '../components/sections/ServicesCarousel';
 import { CTASection } from '../components/sections/CTASection';
 
 export const Home = () => {
@@ -11,6 +12,7 @@ export const Home = () => {
     <div className="flex flex-col min-h-screen">
       <Hero />
       <ServiceList />
+      <ServicesCarousel />
       <Showreel />
       <Philosophy />
       <SelectedWork />
@@ -18,3 +20,4 @@ export const Home = () => {
     </div>
   );
 };
+

@@ -201,9 +201,8 @@ export const Contact = () => {
                       placeholder="e.g. Sarah Jenkins"
                       value={formData.name}
                       onChange={handleChange}
-                      className={`px-4 py-3.5 bg-[#F7F5EF] border rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A] ${
-                        errors.name ? 'border-red-500 bg-red-50/20' : 'border-[#0A0A0A]/14'
-                      }`}
+                      className={`px-4 py-3.5 bg-[#F7F5EF] border rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A] ${errors.name ? 'border-red-500 bg-red-50/20' : 'border-[#0A0A0A]/14'
+                        }`}
                     />
                     {errors.name && <span className="text-xs text-red-600 font-mono">{errors.name}</span>}
                   </div>
@@ -238,9 +237,8 @@ export const Contact = () => {
                       placeholder="sarah@example.com"
                       value={formData.email}
                       onChange={handleChange}
-                      className={`px-4 py-3.5 bg-[#F7F5EF] border rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A] ${
-                        errors.email ? 'border-red-500 bg-red-50/20' : 'border-[#0A0A0A]/14'
-                      }`}
+                      className={`px-4 py-3.5 bg-[#F7F5EF] border rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A] ${errors.email ? 'border-red-500 bg-red-50/20' : 'border-[#0A0A0A]/14'
+                        }`}
                     />
                     {errors.email && <span className="text-xs text-red-600 font-mono">{errors.email}</span>}
                   </div>
@@ -254,7 +252,7 @@ export const Contact = () => {
                       id="phone"
                       type="tel"
                       name="phone"
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="+91 9876543210"
                       value={formData.phone}
                       onChange={handleChange}
                       className="px-4 py-3.5 bg-[#F7F5EF] border border-[#0A0A0A]/14 rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A]"
@@ -284,7 +282,7 @@ export const Contact = () => {
                 </div>
 
                 {/* Budget Selection */}
-                <div className="flex flex-col gap-2">
+                {/* <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold tracking-wider text-[#0A0A0A] uppercase">
                     ESTIMATED BUDGET RANGE (OPTIONAL)
                   </label>
@@ -304,7 +302,7 @@ export const Contact = () => {
                       </button>
                     ))}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Project Description */}
                 <div className="flex flex-col gap-2">
@@ -318,9 +316,8 @@ export const Contact = () => {
                     placeholder="Tell us about your brand, current challenges, objectives, and timeline expectations..."
                     value={formData.description}
                     onChange={handleChange}
-                    className={`p-4 bg-[#F7F5EF] border rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A] ${
-                      errors.description ? 'border-red-500 bg-red-50/20' : 'border-[#0A0A0A]/14'
-                    }`}
+                    className={`p-4 bg-[#F7F5EF] border rounded-sm text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#C8A13A] ${errors.description ? 'border-red-500 bg-red-50/20' : 'border-[#0A0A0A]/14'
+                      }`}
                   />
                   {errors.description && (
                     <span className="text-xs text-red-600 font-mono">{errors.description}</span>
