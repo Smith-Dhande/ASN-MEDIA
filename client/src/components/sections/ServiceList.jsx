@@ -9,12 +9,12 @@ export const ServiceList = () => {
   const [activeHover, setActiveHover] = useState(null);
 
   return (
-    <section className="py-20 md:py-32 bg-[#F7F5EF] border-t border-[#0A0A0A]/10">
+    <section className="pt-64 sm:pt-72 lg:pt-80 pb-24 md:pb-32 bg-[#F7F5EF] text-[#0A0A0A] relative z-10">
       <div className="container-custom">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16 pt-8 border-t border-[#0A0A0A]/10">
           <div className="lg:col-span-5">
             <Reveal>
-              <SectionLabel>CAPABILITIES</SectionLabel>
+              <SectionLabel>FULL CAPABILITIES</SectionLabel>
             </Reveal>
             <Reveal delay={0.1}>
               <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl text-[#0A0A0A] leading-tight">
@@ -31,7 +31,7 @@ export const ServiceList = () => {
           </div>
         </div>
 
-        {/* Editorial Service List */}
+        {/* Complete Editorial Service List (Reveals all 4 Services) */}
         <div className="border-t border-[#0A0A0A]/20">
           {servicesData.map((service, index) => (
             <Reveal key={service.id} delay={0.08 * index}>
