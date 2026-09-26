@@ -9,25 +9,21 @@ export const Footer = () => {
     <footer className="bg-[#0A0A0A] text-[#F7F5EF] pt-20 pb-12 border-t border-white/10">
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 pb-16 border-b border-white/10">
-          {/* Brand Info & Circular Logo */}
+          {/* Brand Info & Larger Circular Logo */}
           <div className="md:col-span-5 flex flex-col gap-6">
-            <div className="flex items-center gap-4">
-              {/* Full Circular ASN Logo Mark */}
-              <div className="w-16 h-16 rounded-full border-2 border-[#C8A13A] bg-black/80 flex flex-col items-center justify-center p-2 text-center shadow-lg relative group">
-                <span className="font-bold text-xs tracking-tighter text-[#C8A13A] font-body leading-none">
-                  ASN
-                </span>
-                <span className="text-[7px] tracking-widest text-white/80 uppercase font-semibold mt-0.5">
-                  MEDIA
-                </span>
-                <div className="absolute inset-0 rounded-full border border-[#C8A13A]/30 scale-110 opacity-0 group-hover:opacity-100 group-hover:scale-125 transition-all duration-500" />
-              </div>
+            <div className="flex items-center gap-5">
+              {/* Official Large Circular ASN Logo Image */}
+              <img
+                src="/favicon.PNG"
+                alt="ASN Media Official Logo"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-2 border-[#C8A13A] shadow-2xl transition-transform duration-300 hover:scale-105 shrink-0 bg-black"
+              />
 
               <div>
-                <h3 className="font-semibold text-lg tracking-widest uppercase font-body text-white">
+                <h3 className="font-bold text-xl sm:text-2xl tracking-[0.18em] uppercase font-body text-white">
                   ASN MEDIA
                 </h3>
-                <p className="text-xs text-[#C8A13A] tracking-wider uppercase font-mono mt-0.5">
+                <p className="text-xs text-[#C8A13A] tracking-[0.16em] uppercase font-mono mt-1 font-semibold">
                   SOCIAL • CONTENT • GROWTH
                 </p>
               </div>
@@ -104,7 +100,7 @@ export const Footer = () => {
                     className="hover:text-[#C8A13A] transition-colors inline-flex items-center gap-1.5"
                   >
                     {soc.label}
-                    <ArrowUpRight className="w-3 h-3 opacity-60" />
+                    <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
                   </a>
                 </li>
               ))}

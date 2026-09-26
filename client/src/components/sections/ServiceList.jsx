@@ -9,9 +9,9 @@ export const ServiceList = () => {
   const [activeHover, setActiveHover] = useState(null);
 
   return (
-    <section className="pt-64 sm:pt-72 lg:pt-80 pb-24 md:pb-32 bg-[#F7F5EF] text-[#0A0A0A] relative z-10">
+    <section className="py-20 md:py-32 bg-[#F7F5EF] text-[#0A0A0A] relative z-10 border-t border-[#0A0A0A]/10">
       <div className="container-custom">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16 pt-8 border-t border-[#0A0A0A]/10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
           <div className="lg:col-span-5">
             <Reveal>
               <SectionLabel>FULL CAPABILITIES</SectionLabel>

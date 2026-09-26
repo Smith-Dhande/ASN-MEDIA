@@ -49,11 +49,13 @@ export const Navbar = () => {
         {/* Restrained Brand Logo */}
         <Link
           to="/"
-          className="group flex items-center gap-2.5 no-underline focus:outline-none focus:ring-2 focus:ring-[#C8A13A] rounded-sm"
+          className="group flex items-center gap-3 no-underline focus:outline-none focus:ring-2 focus:ring-[#C8A13A] rounded-sm"
         >
-          <div className="w-8 h-8 rounded-full border border-[#C8A13A] bg-[#0A0A0A] flex items-center justify-center text-[#C8A13A] font-bold text-xs tracking-tighter transition-transform duration-300 group-hover:scale-105 shadow-md">
-            ASN
-          </div>
+          <img
+            src="/favicon.PNG"
+            alt="ASN Media Logo"
+            className="w-9 h-9 rounded-full object-cover border border-[#C8A13A] shadow-md transition-transform duration-300 group-hover:scale-105"
+          />
           <div className="flex flex-col">
             <span className={`font-semibold text-sm tracking-[0.18em] font-body leading-none uppercase transition-colors ${textColorClass}`}>
               ASN MEDIA
