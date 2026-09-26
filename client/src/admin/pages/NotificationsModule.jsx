@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { FilterBar } from '../components/ui/FilterBar';
 import { AdminCard } from '../components/ui/AdminCard';
+import { Pagination } from '../components/ui/Pagination';
 import { Bell, CheckCheck, Clock, Mail, AlertTriangle, CreditCard, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const NotificationsModule = () => {
@@ -12,6 +13,14 @@ export const NotificationsModule = () => {
   const [notificationsList, setNotificationsList] = useState(initialNotifications || []);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter]);
 
   const handleMarkRead = (id) => {
     setNotificationsList((prev) =>
@@ -37,6 +46,12 @@ export const NotificationsModule = () => {
 
     return matchesSearch;
   });
+
+  const totalPages = Math.ceil(filteredNotifications.length / pageSize) || 1;
+  const paginatedNotifications = filteredNotifications.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const getIcon = (type) => {
     switch (type) {
@@ -93,12 +108,12 @@ export const NotificationsModule = () => {
 
       {/* Notification List */}
       <div className="space-y-3">
-        {filteredNotifications.length === 0 ? (
+        {paginatedNotifications.length === 0 ? (
           <AdminCard className="p-8 text-center text-xs font-mono text-[#66615A]">
             No notifications found matching your filter criteria.
           </AdminCard>
         ) : (
-          filteredNotifications.map((n) => (
+          paginatedNotifications.map((n) => (
             <AdminCard
               key={n.id}
               className={`p-4 transition-colors ${
@@ -154,6 +169,17 @@ export const NotificationsModule = () => {
             </AdminCard>
           ))
         )}
+
+        <AdminCard noPadding>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredNotifications.length}
+            itemsPerPage={pageSize}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setPageSize}
+          />
+        </AdminCard>
       </div>
     </div>
   );

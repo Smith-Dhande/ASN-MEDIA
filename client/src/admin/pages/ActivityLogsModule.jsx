@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
 import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { AdminCard } from '../components/ui/AdminCard';
+import { Pagination } from '../components/ui/Pagination';
 import { Activity, ShieldCheck, Download, Search, Clock, User } from 'lucide-react';
 
 export const ActivityLogsModule = () => {
@@ -12,6 +13,14 @@ export const ActivityLogsModule = () => {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [exportNotice, setExportNotice] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter]);
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
@@ -24,6 +33,12 @@ export const ActivityLogsModule = () => {
 
     return matchesSearch && matchesCategory;
   });
+
+  const totalPages = Math.ceil(filteredLogs.length / pageSize) || 1;
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleExportCSV = () => {
     setExportNotice('Exporting system audit logs to CSV...');
@@ -111,13 +126,23 @@ export const ActivityLogsModule = () => {
         onFilterChange={setCategoryFilter}
       />
 
-      {/* Main DataTable */}
-      <DataTable
-        columns={columns}
-        data={filteredLogs}
-        emptyTitle="No Activity Audit Logs Found"
-        emptyMessage="No activity events recorded matching your current query."
-      />
+      {/* Main DataTable with Pagination */}
+      <AdminCard noPadding>
+        <DataTable
+          columns={columns}
+          data={paginatedLogs}
+          emptyTitle="No Activity Audit Logs Found"
+          emptyMessage="No activity events recorded matching your current query."
+        />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredLogs.length}
+          itemsPerPage={pageSize}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setPageSize}
+        />
+      </AdminCard>
     </div>
   );
 };

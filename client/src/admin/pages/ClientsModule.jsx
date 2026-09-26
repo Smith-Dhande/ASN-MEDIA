@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
@@ -8,6 +8,7 @@ import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
+import { Pagination } from '../components/ui/Pagination';
 import { Users, UserPlus, Clock, Mail, Phone, Building, Calendar, CreditCard, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export const ClientsModule = () => {
@@ -21,6 +22,10 @@ export const ClientsModule = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedClient, setSelectedClient] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Form State for Add Client
   const [formData, setFormData] = useState({
@@ -40,6 +45,11 @@ export const ClientsModule = () => {
   const isAddMode = location.pathname.endsWith('/add');
   const isExpiringMode = location.pathname.endsWith('/expiring');
 
+  // Reset page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, location.pathname]);
+
   // Filter clients based on tab & filters
   const filteredClients = clients.filter((client) => {
     const matchesSearch =
@@ -56,6 +66,12 @@ export const ClientsModule = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredClients.length / pageSize) || 1;
+  const paginatedClients = filteredClients.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Client Detail Drawer trigger
   const handleOpen360 = (client) => {
@@ -148,101 +164,102 @@ export const ClientsModule = () => {
               onClick={() => navigate('/admin/clients')}
               className="text-xs font-mono text-[#685C43] hover:text-[#111111]"
             >
-              ← Back to Clients List
+              ← Back to All Clients
             </button>
           </div>
 
           {formSubmitted ? (
-            <div className="p-8 bg-white rounded-xl border border-emerald-200 text-center space-y-3">
-              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-              <h3 className="font-display text-xl text-[#111111]">Client Onboarded Successfully</h3>
-              <p className="text-xs text-[#685C43]">Redirecting to active client portfolio...</p>
+            <div className="py-12 text-center space-y-3 bg-white p-6 rounded-xl border border-[#0A0A0A]/10">
+              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
+              <div className="font-serif text-xl font-semibold text-[#111111]">Client Account Onboarded</div>
+              <p className="text-xs font-mono text-[#685C43]">Redirecting to main clients directory...</p>
             </div>
           ) : (
-            <AdminCard title="Client Account Details" subtitle="Fill in client contact, contract, and retainer terms">
+            <AdminCard className="p-6">
               <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormInput
-                    label="CLIENT BRAND NAME"
-                    required
-                    placeholder="e.g. Luminary Atelier"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                  <FormInput
-                    label="COMPANY LEGAL NAME"
-                    required
-                    placeholder="e.g. Luminary Designs Pvt Ltd"
-                    value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  />
-                </div>
+                <FormInput
+                  label="Client / Brand Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Maison de Luxe"
+                  required
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormInput
-                    label="PRIMARY CONTACT PERSON"
-                    required
-                    placeholder="e.g. Alexander Wright"
+                    label="Primary Contact Name"
                     value={formData.contactName}
                     onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                    required
                   />
                   <FormInput
-                    label="EMAIL ADDRESS"
-                    type="email"
+                    label="Company Entity Name"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                     required
-                    placeholder="alexander@luminary.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormInput
-                    label="PHONE NUMBER"
-                    placeholder="+91 98765 00000"
+                    label="Email Address"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                  <FormInput
+                    label="Phone Number"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                  <FormSelect
-                    label="ASSIGNED RETAINER PACKAGE"
-                    options={[
-                      { value: 'Social Media Retainer (Tier A)', label: 'Social Media Retainer (Tier A)' },
-                      { value: 'Video Production & Retainer', label: 'Video Production & Retainer' },
-                      { value: 'Content Creation Suite', label: 'Content Creation Suite' },
-                      { value: 'Brand Strategy & Launch Package', label: 'Brand Strategy & Launch Package' },
-                    ]}
-                    value={formData.packageAssigned}
-                    onChange={(e) => setFormData({ ...formData, packageAssigned: e.target.value })}
+                    required
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <FormInput
-                    label="MONTHLY RETAINER ($)"
-                    type="number"
-                    required
-                    value={formData.monthlyRetainer}
-                    onChange={(e) => setFormData({ ...formData, monthlyRetainer: e.target.value })}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormSelect
+                    label="Assigned Retainer Package"
+                    value={formData.packageAssigned}
+                    onChange={(e) => setFormData({ ...formData, packageAssigned: e.target.value })}
+                    options={[
+                      'Social Media Retainer (Tier A)',
+                      'Social Media Retainer (Tier B)',
+                      'Video Production & Retainer',
+                      'Content Creation Suite',
+                      'Brand Strategy & Launch Package',
+                    ]}
                   />
                   <FormInput
-                    label="START DATE"
+                    label="Monthly Retainer Fee ($ USD)"
+                    type="number"
+                    value={formData.monthlyRetainer}
+                    onChange={(e) => setFormData({ ...formData, monthlyRetainer: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Contract Start Date"
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    required
                   />
                   <FormInput
-                    label="EXPIRY / RENEWAL DATE"
+                    label="Contract Expiry Date"
                     type="date"
                     value={formData.expiryDate}
                     onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                    required
                   />
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3 border-t border-[#0A0A0A]/06">
+                <div className="pt-4 border-t border-[#0A0A0A]/08 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => navigate('/admin/clients')}
-                    className="px-4 py-2 text-xs font-mono border border-[#0A0A0A]/10 rounded-lg hover:bg-[#F7F5EF]"
+                    className="px-4 py-2 text-xs font-mono text-[#685C43] hover:text-[#111111]"
                   >
                     Cancel
                   </button>
@@ -264,27 +281,24 @@ export const ClientsModule = () => {
             searchPlaceholder="Search client name, company, email..."
             searchValue={search}
             onSearchChange={setSearch}
-            filters={[
-              {
-                id: 'status',
-                label: 'Status',
-                value: statusFilter,
-                options: [
-                  { label: 'All Statuses', value: 'All' },
-                  { label: 'Active Retainers', value: 'Active' },
-                  { label: 'Pending Onboarding', value: 'Pending' },
-                  { label: 'Completed', value: 'Completed' },
-                ],
-                onChange: setStatusFilter,
-              },
-            ]}
+            filterOptions={['All', 'Active', 'Pending', 'Completed']}
+            selectedFilter={statusFilter}
+            onFilterChange={setStatusFilter}
           />
 
           <AdminCard noPadding>
             <DataTable
               columns={columns}
-              data={filteredClients}
+              data={paginatedClients}
               onRowClick={(row) => handleOpen360(row)}
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredClients.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
             />
           </AdminCard>
         </div>

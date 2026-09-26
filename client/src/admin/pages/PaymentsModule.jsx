@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
@@ -8,6 +8,7 @@ import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
+import { Pagination } from '../components/ui/Pagination';
 import { CreditCard, DollarSign, AlertCircle, Calendar, FileText, CheckCircle2, ArrowUpRight, Plus, Download } from 'lucide-react';
 
 export const PaymentsModule = () => {
@@ -21,6 +22,10 @@ export const PaymentsModule = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Form State for Recording Payment / Creating Invoice
   const [recordForm, setRecordForm] = useState({
@@ -36,6 +41,10 @@ export const PaymentsModule = () => {
   // Determine sub-tab route
   const isOutstanding = location.pathname.includes('/outstanding');
   const isDue = location.pathname.includes('/due');
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, location.pathname]);
 
   // Filter payments based on path + search + status filter
   const filteredPayments = paymentsList.filter((pay) => {
@@ -55,6 +64,12 @@ export const PaymentsModule = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredPayments.length / pageSize) || 1;
+  const paginatedPayments = filteredPayments.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const totalCollected = paymentsList
     .filter((p) => p.status === 'Paid')
@@ -241,19 +256,29 @@ export const PaymentsModule = () => {
       />
 
       {/* Main Ledger Table */}
-      <DataTable
-        columns={columns}
-        data={filteredPayments}
-        onRowClick={handleRowClick}
-        emptyTitle={
-          isOutstanding
-            ? 'No Outstanding Overdue Invoices'
-            : isDue
-            ? 'No Due Pending Invoices'
-            : 'No Payment Records Found'
-        }
-        emptyMessage="All clear! No invoices match your current filter parameters."
-      />
+      <AdminCard noPadding>
+        <DataTable
+          columns={columns}
+          data={paginatedPayments}
+          onRowClick={handleRowClick}
+          emptyTitle={
+            isOutstanding
+              ? 'No Outstanding Overdue Invoices'
+              : isDue
+              ? 'No Due Pending Invoices'
+              : 'No Payment Records Found'
+          }
+          emptyMessage="All clear! No invoices match your current filter parameters."
+        />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredPayments.length}
+          itemsPerPage={pageSize}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setPageSize}
+        />
+      </AdminCard>
 
       {/* Invoice Detail Drawer */}
       <SlideDrawer

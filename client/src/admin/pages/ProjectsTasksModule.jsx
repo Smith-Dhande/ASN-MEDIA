@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { AdminCard } from '../components/ui/AdminCard';
 import { DataTable } from '../components/ui/DataTable';
 import { StatusBadge } from '../components/ui/StatusBadge';
+import { Pagination } from '../components/ui/Pagination';
 import { Kanban, CheckCircle2, Clock, Users, ArrowRight, AlertCircle } from 'lucide-react';
 
 export const ProjectsTasksModule = () => {
@@ -12,6 +13,18 @@ export const ProjectsTasksModule = () => {
 
   const isTasksMode = location.pathname.endsWith('/tasks');
   const isWorkloadMode = location.pathname.endsWith('/workload');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [location.pathname]);
+
+  const activeDataList = isTasksMode ? tasks : isWorkloadMode ? staff : projects;
+  const totalPages = Math.ceil(activeDataList.length / pageSize) || 1;
+  const paginatedData = activeDataList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Columns for Projects Table
   const projectColumns = [
@@ -87,7 +100,7 @@ export const ProjectsTasksModule = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {statusTasks.map((t) => (
+                    {statusTasks.slice(0, 8).map((t) => (
                       <div key={t.id} className="p-3 bg-white rounded-lg border border-[#0A0A0A]/08 shadow-2xs space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="text-xs font-bold text-[#111111] leading-snug">{t.title}</h4>
@@ -105,6 +118,17 @@ export const ProjectsTasksModule = () => {
               );
             })}
           </div>
+
+          <AdminCard noPadding>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={tasks.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
+          </AdminCard>
         </div>
       ) : isWorkloadMode ? (
         /* View: Team Workload View */
@@ -119,7 +143,7 @@ export const ProjectsTasksModule = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {staff.map((member) => (
+            {paginatedData.map((member) => (
               <AdminCard key={member.id}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -138,6 +162,17 @@ export const ProjectsTasksModule = () => {
               </AdminCard>
             ))}
           </div>
+
+          <AdminCard noPadding>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={staff.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
+          </AdminCard>
         </div>
       ) : (
         /* View: Projects List */
@@ -152,7 +187,15 @@ export const ProjectsTasksModule = () => {
           </div>
 
           <AdminCard noPadding>
-            <DataTable columns={projectColumns} data={projects} />
+            <DataTable columns={projectColumns} data={paginatedData} />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={projects.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
           </AdminCard>
         </div>
       )}

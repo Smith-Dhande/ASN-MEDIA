@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
@@ -7,6 +7,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { AdminCard } from '../components/ui/AdminCard';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
+import { Pagination } from '../components/ui/Pagination';
 import { Shield, UserPlus, Check, X, Mail, CheckCircle2 } from 'lucide-react';
 
 export const StaffRolesModule = () => {
@@ -19,6 +20,10 @@ export const StaffRolesModule = () => {
   const [roleFilter, setRoleFilter] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Form for New Staff Account
   const [addForm, setAddForm] = useState({
     name: '',
@@ -28,6 +33,10 @@ export const StaffRolesModule = () => {
   const [addSuccess, setAddSuccess] = useState(false);
 
   const isPermissionsMode = location.pathname.endsWith('/permissions');
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, location.pathname]);
 
   const filteredStaff = staffList.filter((stf) => {
     const matchesSearch =
@@ -39,6 +48,12 @@ export const StaffRolesModule = () => {
 
     return matchesSearch && matchesRole;
   });
+
+  const totalPages = Math.ceil(filteredStaff.length / pageSize) || 1;
+  const paginatedStaff = filteredStaff.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
@@ -212,12 +227,22 @@ export const StaffRolesModule = () => {
             }
           />
 
-          <DataTable
-            columns={columns}
-            data={filteredStaff}
-            emptyTitle="No Staff Accounts Found"
-            emptyMessage="No staff members match the selected search criteria."
-          />
+          <AdminCard noPadding>
+            <DataTable
+              columns={columns}
+              data={paginatedStaff}
+              emptyTitle="No Staff Accounts Found"
+              emptyMessage="No staff members match the selected search criteria."
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredStaff.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
+          </AdminCard>
         </>
       )}
 

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { AdminCard } from '../components/ui/AdminCard';
 import { DataTable } from '../components/ui/DataTable';
 import { StatusBadge } from '../components/ui/StatusBadge';
+import { Pagination } from '../components/ui/Pagination';
 import { Package, CheckCircle2, Users, Layers, Tag } from 'lucide-react';
 
 export const PackagesServicesModule = () => {
@@ -12,6 +13,19 @@ export const PackagesServicesModule = () => {
 
   const isServicesMode = location.pathname.endsWith('/services');
   const isAssignmentsMode = location.pathname.endsWith('/assignments');
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [location.pathname]);
+
+  // Sliced data based on active mode
+  const activeDataList = isServicesMode ? services : isAssignmentsMode ? clients : packages;
+  const totalPages = Math.ceil(activeDataList.length / pageSize) || 1;
+  const paginatedData = activeDataList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Columns for Services table
   const serviceColumns = [
@@ -85,7 +99,15 @@ export const PackagesServicesModule = () => {
             </h2>
           </div>
           <AdminCard noPadding>
-            <DataTable columns={serviceColumns} data={services} />
+            <DataTable columns={serviceColumns} data={paginatedData} />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={services.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
           </AdminCard>
         </div>
       ) : isAssignmentsMode ? (
@@ -100,7 +122,15 @@ export const PackagesServicesModule = () => {
             </h2>
           </div>
           <AdminCard noPadding>
-            <DataTable columns={assignmentColumns} data={clients} />
+            <DataTable columns={assignmentColumns} data={paginatedData} />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={clients.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
           </AdminCard>
         </div>
       ) : (
@@ -116,7 +146,7 @@ export const PackagesServicesModule = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {packages.map((pkg) => (
+            {paginatedData.map((pkg) => (
               <AdminCard key={pkg.id}>
                 <div className="space-y-4">
                   <div className="flex items-start justify-between">
@@ -145,6 +175,17 @@ export const PackagesServicesModule = () => {
               </AdminCard>
             ))}
           </div>
+
+          <AdminCard noPadding>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={packages.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
+          </AdminCard>
         </div>
       )}
     </div>

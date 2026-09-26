@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
@@ -8,6 +8,7 @@ import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
+import { Pagination } from '../components/ui/Pagination';
 import { Star, RefreshCw, Plus, CheckCircle2, Search, MapPin, AlertCircle, BarChart2 } from 'lucide-react';
 
 export const ReviewScannersModule = () => {
@@ -23,6 +24,10 @@ export const ReviewScannersModule = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Form state for Create Scanner
   const [createForm, setCreateForm] = useState({
     clientName: 'Aura Luxury Beauty',
@@ -36,6 +41,10 @@ export const ReviewScannersModule = () => {
   // Path modes
   const isCreateMode = location.pathname.endsWith('/create');
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, location.pathname]);
+
   // Filter scanners
   const filteredScanners = scanners.filter((scn) => {
     const matchesSearch =
@@ -48,6 +57,12 @@ export const ReviewScannersModule = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredScanners.length / pageSize) || 1;
+  const paginatedScanners = filteredScanners.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleRowClick = (scn) => {
     setSelectedScanner(scn);
@@ -337,13 +352,23 @@ export const ReviewScannersModule = () => {
             }
           />
 
-          <DataTable
-            columns={columns}
-            data={filteredScanners}
-            onRowClick={handleRowClick}
-            emptyTitle="No Review Scanners Configured"
-            emptyMessage="Create a new scanner monitor to start tracking Google Place reviews."
-          />
+          <AdminCard noPadding>
+            <DataTable
+              columns={columns}
+              data={paginatedScanners}
+              onRowClick={handleRowClick}
+              emptyTitle="No Review Scanners Configured"
+              emptyMessage="Create a new scanner monitor to start tracking Google Place reviews."
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredScanners.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+            />
+          </AdminCard>
         </>
       )}
 

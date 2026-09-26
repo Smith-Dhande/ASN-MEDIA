@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
@@ -6,6 +6,7 @@ import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
+import { Pagination } from '../components/ui/Pagination';
 import { Inbox, Mail, Phone, Building, Calendar, DollarSign, ArrowRight, UserCheck } from 'lucide-react';
 
 export const EnquiriesModule = () => {
@@ -18,8 +19,17 @@ export const EnquiriesModule = () => {
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const isFollowUpMode = location.pathname.endsWith('/follow-ups');
   const isConvertedMode = location.pathname.endsWith('/converted');
+
+  // Reset page when search, status, or route changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, location.pathname]);
 
   const filteredEnquiries = enquiries.filter((enq) => {
     const matchesSearch =
@@ -38,6 +48,12 @@ export const EnquiriesModule = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredEnquiries.length / pageSize) || 1;
+  const paginatedEnquiries = filteredEnquiries.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleOpenDetail = (enquiry) => {
     setSelectedEnquiry(enquiry);
@@ -112,28 +128,24 @@ export const EnquiriesModule = () => {
         searchPlaceholder="Search lead name, company, email..."
         searchValue={search}
         onSearchChange={setSearch}
-        filters={[
-          {
-            id: 'status',
-            label: 'Status',
-            value: statusFilter,
-            options: [
-              { label: 'All Statuses', value: 'All' },
-              { label: 'New Enquiries', value: 'New' },
-              { label: 'In Contact', value: 'In Contact' },
-              { label: 'Proposal Sent', value: 'Proposal Sent' },
-              { label: 'Converted', value: 'Converted' },
-            ],
-            onChange: setStatusFilter,
-          },
-        ]}
+        filterOptions={['All', 'New', 'In Contact', 'Proposal Sent', 'Converted']}
+        selectedFilter={statusFilter}
+        onFilterChange={setStatusFilter}
       />
 
       <AdminCard noPadding>
         <DataTable
           columns={columns}
-          data={filteredEnquiries}
+          data={paginatedEnquiries}
           onRowClick={(row) => handleOpenDetail(row)}
+        />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredEnquiries.length}
+          itemsPerPage={pageSize}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setPageSize}
         />
       </AdminCard>
 
@@ -148,36 +160,42 @@ export const EnquiriesModule = () => {
           <div className="space-y-6">
             <div className="p-4 bg-[#FAF8F3] rounded-xl border border-[#0A0A0A]/06 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-[#685C43] uppercase">Service Requested</span>
-                <StatusBadge status={selectedEnquiry.status} />
+                <span className="text-[10px] font-mono text-[#685C43] uppercase block">Requested Service</span>
+                <span className="font-mono text-xs font-bold text-[#8E722A]">{selectedEnquiry.serviceRequested}</span>
               </div>
-              <span className="font-display text-xl font-bold text-[#111111] block">{selectedEnquiry.serviceRequested}</span>
-              <span className="text-xs font-mono text-[#8E722A] block">Budget Tier: {selectedEnquiry.budgetTier} • Timeline: {selectedEnquiry.timeline}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-[#685C43] uppercase block">Budget Bracket</span>
+                <span className="font-mono text-xs font-bold text-[#111111]">{selectedEnquiry.budgetTier}</span>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <span className="font-mono text-[10px] font-bold text-[#8E722A] uppercase tracking-wider block">PROJECT DESCRIPTION</span>
-              <p className="text-xs text-[#221C11] leading-relaxed p-3 bg-white rounded-lg border border-[#0A0A0A]/08">
-                {selectedEnquiry.description}
-              </p>
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-3">
               <span className="font-mono text-[10px] font-bold text-[#8E722A] uppercase tracking-wider block">CONTACT DETAILS</span>
-              <div className="space-y-1.5 text-xs text-[#685C43]">
+              <div className="space-y-2 text-xs font-body text-[#221C11]">
+                <div className="flex items-center gap-2">
+                  <Building className="w-4 h-4 text-[#8E722A]" />
+                  <span>Company: {selectedEnquiry.company}</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-[#8E722A]" />
-                  <span>{selectedEnquiry.email}</span>
+                  <span>Email: {selectedEnquiry.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-[#8E722A]" />
-                  <span>{selectedEnquiry.phone}</span>
+                  <span>Phone: {selectedEnquiry.phone}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-[#8E722A]" />
-                  <span>Assigned Staff: {selectedEnquiry.assignedTo || 'Unassigned'}</span>
+                  <Calendar className="w-4 h-4 text-[#8E722A]" />
+                  <span>Received: {selectedEnquiry.dateSubmitted}</span>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="font-mono text-[10px] font-bold text-[#8E722A] uppercase tracking-wider block">PROJECT INQUIRY NOTES</span>
+              <p className="text-xs text-[#221C11] font-body bg-white p-3 rounded-lg border border-[#0A0A0A]/08 italic">
+                "{selectedEnquiry.description}"
+              </p>
             </div>
 
             <div className="pt-4 border-t border-[#0A0A0A]/06 flex justify-end gap-2">
@@ -185,7 +203,7 @@ export const EnquiriesModule = () => {
                 onClick={() => setIsDrawerOpen(false)}
                 className="px-4 py-2 text-xs font-mono bg-[#111111] text-[#F7F5EF] rounded-lg"
               >
-                Close Drawer
+                Close View
               </button>
             </div>
           </div>
