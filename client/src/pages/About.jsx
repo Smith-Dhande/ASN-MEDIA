@@ -61,10 +61,10 @@ export const About = () => {
           <Reveal>
             <div className="flex items-center gap-3 mb-6">
               <SectionLabel>ABOUT ASN MEDIA</SectionLabel>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#8E722A]" />
+              {/* <span className="w-1.5 h-1.5 rounded-full bg-[#8E722A]" />
               <span className="text-[11px] font-mono tracking-widest text-[#8E722A] uppercase font-semibold">
                 CREATIVE STUDIO & MEDIA AGENCY
-              </span>
+              </span> */}
             </div>
           </Reveal>
 
