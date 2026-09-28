@@ -5,7 +5,7 @@ export const siteConfig = {
   heroSubhead: "We build brands through social strategy, content and visual storytelling.",
   email: "hello@asnmedia.in",
   phone: "+91 (0) 98765 43210",
-  location: "Mumbai & Global Remote",
+  location: "Nagpur & Global Remote",
   copyright: `© ASN Media ${new Date().getFullYear()}`,
   navLinks: [
     { label: "Work", path: "/work" },

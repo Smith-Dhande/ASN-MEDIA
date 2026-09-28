@@ -109,6 +109,33 @@ html.lenis, html.lenis body {
   animation: asnShimmer 2s infinite ease-in-out;
 }
 
+/* Auth Drawer & Fade Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -120,7 +147,9 @@ html.lenis, html.lenis body {
     scroll-behavior: auto !important;
   }
 
-  .animate-admin-page {
+  .animate-admin-page,
+  .animate-fadeIn,
+  .animate-slideInRight {
     animation: none !important;
   }
 
@@ -129,3 +158,4 @@ html.lenis, html.lenis body {
     background: #FAF8F3 !important;
   }
 }
+

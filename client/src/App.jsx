@@ -4,6 +4,9 @@ import Lenis from 'lenis';
 
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
+import { AuthProvider } from './context/AuthContext';
+import { AuthDrawer } from './components/auth/AuthDrawer';
+import { AccountModal } from './components/auth/AccountModal';
 
 import { Home } from './pages/Home';
 import { Work } from './pages/Work';
@@ -44,13 +47,17 @@ const ScrollToTop = () => {
 
 // Public Website Layout Shell
 const PublicLayout = () => (
-  <div className="min-h-screen flex flex-col bg-[#F7F5EF] text-[#111111] font-body selection:bg-[#C8A13A] selection:text-black">
-    <Navbar />
-    <main className="flex-grow">
-      <Outlet />
-    </main>
-    <Footer />
-  </div>
+  <AuthProvider>
+    <div className="min-h-screen flex flex-col bg-[#F7F5EF] text-[#111111] font-body selection:bg-[#C8A13A] selection:text-black">
+      <Navbar />
+      <main className="flex-grow">
+        <Outlet />
+      </main>
+      <Footer />
+      <AuthDrawer />
+      <AccountModal />
+    </div>
+  </AuthProvider>
 );
 
 export function App() {

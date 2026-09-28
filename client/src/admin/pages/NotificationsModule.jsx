@@ -7,10 +7,9 @@ import { Pagination } from '../components/ui/Pagination';
 import { Bell, CheckCheck, Clock, Mail, AlertTriangle, CreditCard, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const NotificationsModule = () => {
-  const { notifications: initialNotifications, markNotificationAsRead, markAllNotificationsAsRead } = useAdminData();
+  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAdminData();
   const navigate = useNavigate();
 
-  const [notificationsList, setNotificationsList] = useState(initialNotifications || []);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
@@ -23,18 +22,14 @@ export const NotificationsModule = () => {
   }, [search, categoryFilter]);
 
   const handleMarkRead = (id) => {
-    setNotificationsList((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
     markNotificationAsRead(id);
   };
 
   const handleMarkAllRead = () => {
-    setNotificationsList((prev) => prev.map((n) => ({ ...n, read: true })));
     markAllNotificationsAsRead();
   };
 
-  const filteredNotifications = notificationsList.filter((n) => {
+  const filteredNotifications = (notifications || []).filter((n) => {
     const matchesSearch =
       n.title.toLowerCase().includes(search.toLowerCase()) ||
       n.message.toLowerCase().includes(search.toLowerCase());
@@ -66,7 +61,7 @@ export const NotificationsModule = () => {
     }
   };
 
-  const unreadCount = notificationsList.filter((n) => !n.read).length;
+  const unreadCount = (notifications || []).filter((n) => !n.read).length;
 
   return (
     <div className="space-y-6">
