@@ -118,10 +118,15 @@ export const EnquiriesModule = () => {
   const handleConvertSubmit = (e) => {
     e.preventDefault();
     if (!selectedEnquiry) return;
-    convertEnquiryToClient(selectedEnquiry.id, convertForm);
+    const newClientId = convertEnquiryToClient(selectedEnquiry.id, convertForm);
     setSelectedEnquiry((prev) => ({ ...prev, status: 'Converted' }));
     setIsConvertModalOpen(false);
     showToast(`Enquiry converted to client profile: ${convertForm.name}!`);
+    if (newClientId) {
+      setTimeout(() => {
+        navigate(`/admin/clients/${newClientId}`);
+      }, 500);
+    }
   };
 
   const handleFollowUpSubmit = (e) => {

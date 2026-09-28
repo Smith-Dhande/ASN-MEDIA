@@ -73,9 +73,10 @@ export const AdminDataProvider = ({ children }) => {
 
   // CLIENT HANDLERS
   const addClient = (newClient) => {
+    const generatedId = newClient.id || `cli_${Date.now()}`;
     setData((prev) => {
       const clientObj = {
-        id: newClient.id || `cli_${Date.now()}`,
+        id: generatedId,
         name: newClient.name,
         contactName: newClient.contactName || newClient.name,
         email: newClient.email,
@@ -105,6 +106,7 @@ export const AdminDataProvider = ({ children }) => {
       const updated = { ...prev, clients: updatedClients };
       return { ...updated, dashboardMetrics: computeMetrics(updated) };
     });
+    return generatedId;
   };
 
   const updateClient = (id, updatedFields) => {
@@ -187,12 +189,13 @@ export const AdminDataProvider = ({ children }) => {
   };
 
   const convertEnquiryToClient = (enquiryId, clientData) => {
+    const newId = `cli_${Date.now()}`;
     // 1. Mark enquiry as Converted
     updateEnquiry(enquiryId, { status: 'Converted' });
 
     // 2. Create corresponding Client
     addClient({
-      id: `cli_${Date.now()}`,
+      id: newId,
       name: clientData.name,
       contactName: clientData.contactName || clientData.name,
       email: clientData.email,
@@ -205,6 +208,8 @@ export const AdminDataProvider = ({ children }) => {
       expiryDate: '2027-03-31',
       assignedStaff: clientData.assignedStaff || ['Sarah Jenkins'],
     });
+
+    return newId;
   };
 
   // PACKAGE HANDLERS
