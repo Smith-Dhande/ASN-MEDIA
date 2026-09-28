@@ -12,6 +12,8 @@ import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { FormToggle } from '../components/ui/FormToggle';
 import { Pagination } from '../components/ui/Pagination';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import {
   Kanban,
   CheckCircle2,
@@ -415,6 +417,42 @@ export const ProjectsTasksModule = () => {
           <span>{feedback.message}</span>
         </div>
       )}
+
+      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="TOTAL PROJECTS"
+          value={projects.length}
+          trend={8}
+          trendLabel="total deliverables"
+          icon={FolderKanban}
+          accentColor="gold"
+        />
+        <KpiCard
+          label="ACTIVE IN PROGRESS"
+          value={projects.filter((p) => p.status === 'In Progress' || p.status === 'Planning').length}
+          trend={12}
+          trendLabel="in active production"
+          icon={Kanban}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="COMPLETED DELIVERABLES"
+          value={projects.filter((p) => p.status === 'Completed').length}
+          trend={15}
+          trendLabel="delivered projects"
+          icon={CheckCircle2}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="PENDING PRODUCTION TASKS"
+          value={tasks.filter((t) => t.status !== 'Completed').length}
+          trend={-3}
+          trendLabel="tasks pending review"
+          icon={CheckSquare}
+          accentColor="amber"
+        />
+      </div>
 
       {isTasksMode ? (
         /* View: Kanban Task Board View */

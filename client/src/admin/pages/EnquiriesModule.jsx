@@ -10,6 +10,8 @@ import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { AdminModal } from '../components/ui/AdminModal';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import { Inbox, Mail, Phone, Building, Calendar, DollarSign, ArrowRight, UserCheck, Plus, CheckCircle2, UserPlus, Clock } from 'lucide-react';
 
 export const EnquiriesModule = () => {
@@ -214,13 +216,53 @@ export const EnquiriesModule = () => {
   ];
 
   return (
-    <div className="space-y-4 font-body">
+    <div className="space-y-6 font-body">
       {toastMessage && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono rounded-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="TOTAL ENQUIRIES"
+          value={enquiries.length}
+          trend={15}
+          trendLabel="received leads"
+          icon={Inbox}
+          accentColor="gold"
+        />
+        <KpiCard
+          label="NEW LEADS"
+          value={enquiries.filter((e) => e.status === 'New').length}
+          trend={5}
+          trendLabel="uncontacted"
+          icon={Mail}
+          accentColor="amber"
+        />
+        <KpiCard
+          label="IN CONTACT / PROPOSAL"
+          value={
+            enquiries.filter(
+              (e) => e.status === 'In Contact' || e.status === 'Proposal Sent'
+            ).length
+          }
+          trend={8}
+          trendLabel="active pipeline"
+          icon={Clock}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="CONVERTED CLIENTS"
+          value={enquiries.filter((e) => e.status === 'Converted').length}
+          trend={22}
+          trendLabel="onboarded accounts"
+          icon={UserCheck}
+          accentColor="emerald"
+        />
+      </div>
 
       <FilterBar
         searchPlaceholder="Search lead name, company, email..."

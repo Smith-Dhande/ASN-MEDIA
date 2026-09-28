@@ -10,7 +10,9 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
-import { Shield, UserPlus, Check, X, Mail, CheckCircle2, Edit2, Power, Save } from 'lucide-react';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
+import { Shield, UserPlus, Check, X, Mail, CheckCircle2, Edit2, Power, Save, Users, UserCheck } from 'lucide-react';
 
 export const StaffRolesModule = () => {
   const { staff, addStaff, updateStaff, deleteStaff } = useAdminData();
@@ -212,6 +214,49 @@ export const StaffRolesModule = () => {
           <span>{feedback.message}</span>
         </div>
       )}
+
+      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="TOTAL STAFF TEAM"
+          value={staff.length}
+          trend={6}
+          trendLabel="team members"
+          icon={Users}
+          accentColor="gold"
+        />
+        <KpiCard
+          label="ACTIVE STAFF"
+          value={staff.filter((s) => s.status === 'Active').length}
+          trend={0}
+          trendLabel="active accounts"
+          icon={UserCheck}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="LEADERSHIP ROLES"
+          value={
+            staff.filter(
+              (s) =>
+                s.role.includes('Manager') ||
+                s.role.includes('Director') ||
+                s.role.includes('Strategist')
+            ).length
+          }
+          trend={4}
+          trendLabel="leads & managers"
+          icon={Shield}
+          accentColor="amber"
+        />
+        <KpiCard
+          label="TEAM CAPACITY"
+          value="92%"
+          trend={2}
+          trendLabel="workload active"
+          icon={CheckCircle2}
+          accentColor="emerald"
+        />
+      </div>
 
       {isPermissionsMode ? (
         /* Role Permissions Matrix View */

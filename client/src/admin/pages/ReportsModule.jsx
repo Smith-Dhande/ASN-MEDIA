@@ -17,7 +17,8 @@ import { useAdminData } from '../context/AdminDataContext';
 import { AdminCard } from '../components/ui/AdminCard';
 import { FilterBar } from '../components/ui/FilterBar';
 import { ReportsSkeleton } from '../components/ui/LoadingSkeleton';
-import { TrendingUp, Download, Calendar, DollarSign, Users, Briefcase, FileText, CheckCircle2, FileSpreadsheet, Filter } from 'lucide-react';
+import { KpiCard } from '../components/ui/KpiCard';
+import { TrendingUp, Download, Calendar, DollarSign, Users, Briefcase, FileText, CheckCircle2, FileSpreadsheet, Filter, AlertTriangle } from 'lucide-react';
 
 export const ReportsModule = () => {
   const { clients, projects, payments, services, packages, staff } = useAdminData();
@@ -177,38 +178,40 @@ export const ReportsModule = () => {
         </select>
       </div>
 
-      {/* Primary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <AdminCard className="p-4 border-l-4 border-l-[#8E722A]">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Total Revenue Collected</div>
-          <div className="text-2xl font-bold font-mono text-[#111111] mt-1">
-            ${payments.filter(p => p.status === 'Paid').reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0).toLocaleString()}
-          </div>
-          <div className="text-[10px] font-mono text-emerald-700 mt-1 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" />
-            <span>+14.5% vs target</span>
-          </div>
-        </AdminCard>
-
-        <AdminCard className="p-4 border-l-4 border-l-[#111111]">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Active Retainer Clients</div>
-          <div className="text-2xl font-bold font-mono text-[#111111] mt-1">{clients.filter(c => c.status === 'Active').length} Active</div>
-          <div className="text-[10px] font-mono text-[#685C43] mt-1">Out of {clients.length} total client accounts</div>
-        </AdminCard>
-
-        <AdminCard className="p-4 border-l-4 border-l-[#C8A13A]">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Filtered Projects</div>
-          <div className="text-2xl font-bold font-mono text-[#111111] mt-1">{filteredProjects.length} Projects</div>
-          <div className="text-[10px] font-mono text-emerald-700 mt-1">In active production</div>
-        </AdminCard>
-
-        <AdminCard className="p-4 border-l-4 border-l-amber-600">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Outstanding Due</div>
-          <div className="text-2xl font-bold font-mono text-amber-800 mt-1">
-            ${payments.filter(p => p.status === 'Overdue' || p.status === 'Pending').reduce((acc, p) => acc + (Number(p.amount) - (Number(p.amountReceived) || 0)), 0).toLocaleString()}
-          </div>
-          <div className="text-[10px] font-mono text-[#685C43] mt-1">Pending payment ledger</div>
-        </AdminCard>
+      {/* Primary KPI Cards (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="TOTAL REVENUE COLLECTED"
+          value={`$${payments.filter((p) => p.status === 'Paid').reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0).toLocaleString()}`}
+          trend={14}
+          trendLabel="vs target"
+          icon={DollarSign}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="ACTIVE RETAINER CLIENTS"
+          value={`${clients.filter((c) => c.status === 'Active').length} Active`}
+          trend={8}
+          trendLabel={`out of ${clients.length} accounts`}
+          icon={Users}
+          accentColor="gold"
+        />
+        <KpiCard
+          label="FILTERED PROJECTS"
+          value={`${filteredProjects.length} Projects`}
+          trend={12}
+          trendLabel="in active production"
+          icon={Briefcase}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="OUTSTANDING DUE"
+          value={`$${payments.filter((p) => p.status === 'Overdue' || p.status === 'Pending').reduce((acc, p) => acc + (Number(p.amount) - (Number(p.amountReceived) || 0)), 0).toLocaleString()}`}
+          trend={-3}
+          trendLabel="pending ledger"
+          icon={AlertTriangle}
+          accentColor="amber"
+        />
       </div>
 
       {/* Visual Analytics Grid */}

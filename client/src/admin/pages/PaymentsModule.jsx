@@ -11,6 +11,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import {
   CreditCard,
   DollarSign,
@@ -314,34 +316,40 @@ export const PaymentsModule = () => {
         </div>
       )}
 
-      {/* Metrics Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <AdminCard className="p-4 border-l-4 border-l-[#8E722A]">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Total Revenue Collected</div>
-              <div className="text-2xl font-bold font-mono text-[#111111] mt-1">${totalCollected.toLocaleString()}</div>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard className="p-4 border-l-4 border-l-[#C8A13A]">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Outstanding Revenue</div>
-              <div className="text-2xl font-bold font-mono text-[#111111] mt-1">${totalOutstanding.toLocaleString()}</div>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard className="p-4 border-l-4 border-l-red-600">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Overdue Invoices</div>
-              <div className="text-2xl font-bold font-mono text-red-700 mt-1">{overdueCount} Alert</div>
-            </div>
-          </div>
-        </AdminCard>
+      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="TOTAL COLLECTED YTD"
+          value={`$${totalCollected.toLocaleString()}`}
+          trend={18}
+          trendLabel="settled retainer revenue"
+          icon={DollarSign}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="OUTSTANDING REVENUE"
+          value={`$${totalOutstanding.toLocaleString()}`}
+          trend={-5}
+          trendLabel="pending collections"
+          icon={CreditCard}
+          accentColor="amber"
+        />
+        <KpiCard
+          label="OVERDUE INVOICES"
+          value={overdueCount}
+          trend={-2}
+          trendLabel="action required"
+          icon={AlertCircle}
+          accentColor="crimson"
+        />
+        <KpiCard
+          label="SETTLED INVOICES"
+          value={payments.filter((p) => p.status === 'Paid').length}
+          trend={12}
+          trendLabel="fully paid invoices"
+          icon={CheckCircle2}
+          accentColor="gold"
+        />
       </div>
 
       {/* Filter Bar */}

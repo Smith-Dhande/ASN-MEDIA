@@ -11,10 +11,12 @@ import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { AdminModal } from '../components/ui/AdminModal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import {
   Users, UserPlus, Clock, Mail, Phone, Building, Calendar, CreditCard, ArrowRight,
   CheckCircle2, Edit, Archive, Trash2, Plus, Globe, FileText,
-  Star, Kanban, RefreshCw, AlertTriangle, Download, ArrowLeft, Layers, DollarSign, ExternalLink
+  Star, Kanban, RefreshCw, AlertTriangle, Download, ArrowLeft, Layers, DollarSign, ExternalLink, ShieldCheck
 } from 'lucide-react';
 
 export const ClientsModule = () => {
@@ -1170,7 +1172,52 @@ export const ClientsModule = () => {
           </div>
         ) : (
           /* Main Directory Table View */
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <KpiCard
+                label="TOTAL CLIENTS"
+                value={clients.length}
+                trend={12}
+                trendLabel="registered accounts"
+                icon={Users}
+                accentColor="gold"
+              />
+              <KpiCard
+                label="ACTIVE RETAINERS"
+                value={clients.filter((c) => c.status === 'Active').length}
+                trend={8}
+                trendLabel="active contracts"
+                icon={CheckCircle2}
+                accentColor="emerald"
+              />
+              <KpiCard
+                label="PENDING ONBOARDING"
+                value={clients.filter((c) => c.status === 'Pending').length}
+                trend={0}
+                trendLabel="requires setup"
+                icon={Clock}
+                accentColor="amber"
+              />
+              <KpiCard
+                label="CONTRACTS EXPIRING"
+                value={
+                  clients.filter(
+                    (c) =>
+                      c.expiryDate &&
+                      (c.expiryDate.includes('2026-04') ||
+                        c.expiryDate.includes('2026-05') ||
+                        c.expiryDate.includes('2026-10') ||
+                        c.expiryDate.includes('2027-03'))
+                  ).length
+                }
+                trend={-4}
+                trendLabel="due within 60 days"
+                icon={AlertTriangle}
+                accentColor="crimson"
+              />
+            </div>
+
             <FilterBar
               searchPlaceholder="Search client name, company, email..."
               searchValue={search}

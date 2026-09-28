@@ -11,6 +11,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import {
   Star,
   RefreshCw,
@@ -289,27 +291,40 @@ export const ReviewScannersModule = () => {
         </div>
       )}
 
-      {/* Top Banner KPI Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <AdminCard className="p-4 border-l-4 border-l-[#8E722A]">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Active Scanners</div>
-          <div className="text-2xl font-bold font-mono text-[#111111] mt-1">{reviewScanners.length} Monitors</div>
-        </AdminCard>
-        <AdminCard className="p-4 border-l-4 border-l-amber-500">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Average Rating</div>
-          <div className="text-2xl font-bold font-mono text-[#111111] mt-1 flex items-center gap-1.5">
-            <span>4.8</span>
-            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-          </div>
-        </AdminCard>
-        <AdminCard className="p-4 border-l-4 border-l-emerald-600">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Positive Sentiment</div>
-          <div className="text-2xl font-bold font-mono text-emerald-700 mt-1">94.2%</div>
-        </AdminCard>
-        <AdminCard className="p-4 border-l-4 border-l-[#111111]">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#685C43]">Total Reviews Scraped</div>
-          <div className="text-2xl font-bold font-mono text-[#111111] mt-1">680+ Reviews</div>
-        </AdminCard>
+      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="ACTIVE SCANNERS"
+          value={reviewScanners.length}
+          trend={2}
+          trendLabel="google place monitors"
+          icon={Star}
+          accentColor="gold"
+        />
+        <KpiCard
+          label="AVERAGE RATING"
+          value="4.8 / 5.0"
+          trend={5}
+          trendLabel="across client places"
+          icon={Sparkles}
+          accentColor="amber"
+        />
+        <KpiCard
+          label="POSITIVE SENTIMENT"
+          value="94.2%"
+          trend={3}
+          trendLabel="positive review ratio"
+          icon={CheckCircle2}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="TOTAL REVIEWS SCRAPED"
+          value="680+"
+          trend={14}
+          trendLabel="scraped feedback items"
+          icon={RefreshCw}
+          accentColor="charcoal"
+        />
       </div>
 
       {/* Controls Bar */}

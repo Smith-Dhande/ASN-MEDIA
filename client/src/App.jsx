@@ -127,16 +127,26 @@ export function App() {
 
           {/* Packages & Services Subsystem */}
           <Route path="packages" element={<PackagesServicesModule />} />
+          <Route path="packages/create" element={<PackagesServicesModule />} />
+          <Route path="packages/edit/:id" element={<PackagesServicesModule />} />
           <Route path="services" element={<PackagesServicesModule />} />
+          <Route path="services/create" element={<PackagesServicesModule />} />
+          <Route path="services/edit/:id" element={<PackagesServicesModule />} />
           <Route path="assignments" element={<PackagesServicesModule />} />
 
           {/* Projects & Tasks Subsystem */}
           <Route path="projects" element={<ProjectsTasksModule />} />
+          <Route path="projects/create" element={<ProjectsTasksModule />} />
+          <Route path="projects/edit/:id" element={<ProjectsTasksModule />} />
           <Route path="tasks" element={<ProjectsTasksModule />} />
+          <Route path="tasks/create" element={<ProjectsTasksModule />} />
+          <Route path="tasks/edit/:id" element={<ProjectsTasksModule />} />
           <Route path="workload" element={<ProjectsTasksModule />} />
 
           {/* Payments Subsystem */}
           <Route path="payments" element={<PaymentsModule />} />
+          <Route path="payments/create" element={<PaymentsModule />} />
+          <Route path="payments/edit/:id" element={<PaymentsModule />} />
           <Route path="payments/outstanding" element={<PaymentsModule />} />
           <Route path="payments/due" element={<PaymentsModule />} />
 
@@ -153,6 +163,8 @@ export function App() {
 
           {/* Staff & Roles Subsystem */}
           <Route path="staff" element={<StaffRolesModule />} />
+          <Route path="staff/add" element={<StaffRolesModule />} />
+          <Route path="staff/edit/:id" element={<StaffRolesModule />} />
           <Route path="staff/permissions" element={<StaffRolesModule />} />
 
           {/* Activity Logs */}

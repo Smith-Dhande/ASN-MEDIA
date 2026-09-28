@@ -11,6 +11,8 @@ import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { FormToggle } from '../components/ui/FormToggle';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { KpiCard } from '../components/ui/KpiCard';
+import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import { Package, CheckCircle2, Users, Layers, Tag, Plus, Edit, Trash2, Clock, Eye, AlertCircle } from 'lucide-react';
 
 export const PackagesServicesModule = () => {
@@ -265,6 +267,42 @@ export const PackagesServicesModule = () => {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="RETAINER PACKAGES"
+          value={packages.length}
+          trend={4}
+          trendLabel="active package tiers"
+          icon={Package}
+          accentColor="gold"
+        />
+        <KpiCard
+          label="DISCRETE SERVICES"
+          value={services.filter((s) => s.status === 'Active').length}
+          trend={6}
+          trendLabel="active service items"
+          icon={Layers}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="SUBSCRIBED CLIENTS"
+          value={clients.filter((c) => c.status === 'Active').length}
+          trend={12}
+          trendLabel="active subscribers"
+          icon={Users}
+          accentColor="emerald"
+        />
+        <KpiCard
+          label="PUBLIC VISIBILITY"
+          value={packages.filter((p) => p.publicVisibility !== false).length}
+          trend={0}
+          trendLabel="catalog items visible"
+          icon={Eye}
+          accentColor="amber"
+        />
+      </div>
 
       {isServicesMode ? (
         /* View: Services List */
