@@ -473,7 +473,7 @@ export const ReviewScannersModule = () => {
                 className="py-2.5 px-4 bg-[#8E722A]/10 hover:bg-[#8E722A] text-[#8E722A] hover:text-white border border-[#8E722A]/30 text-xs font-mono font-semibold rounded transition-colors flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Create New Client</span>
+                <span> Create New Client</span>
               </button>
             </div>
 
@@ -540,7 +540,7 @@ export const ReviewScannersModule = () => {
 
                   {/* Options List */}
                   <div className="space-y-2 pt-2">
-                    <label className="block text-[11px] font-mono text-[#685C43]">Available Dropdown Options:</label>
+                    <label className="block text-[11px] font-mono text-[#685C43]">Available Keywords</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(q.options || []).map((opt, oIdx) => (
                         <div key={opt.id || oIdx} className="flex items-center gap-2 bg-white p-2 rounded border border-[#0A0A0A]/10">
