@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { DataTable } from '../components/ui/DataTable';
-import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
@@ -11,7 +10,7 @@ import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { KpiCard } from '../components/ui/KpiCard';
-import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
+import { QrCodeRenderer } from '../../components/ui/QrCodeRenderer';
 import {
   Star,
   RefreshCw,
@@ -30,10 +29,16 @@ import {
   Power,
   Globe,
   Share2,
+  Trash2,
+  HelpCircle,
+  TrendingUp,
+  Users,
+  BarChart3,
+  X
 } from 'lucide-react';
 
 export const ReviewScannersModule = () => {
-  const { reviewScanners, clients, addScanner, updateScanner, deleteScanner } = useAdminData();
+  const { reviewScanners, clients, addScanner, updateScanner, deleteScanner, addClient } = useAdminData();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -41,13 +46,15 @@ export const ReviewScannersModule = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedScanner, setSelectedScanner] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState('Overview'); // Overview | QRCode | Destination | AIResponse
-  const [isScanning, setIsScanning] = useState(false);
+  const [drawerTab, setDrawerTab] = useState('Overview'); // Overview | Questions | QRCode | Analytics
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isPublicPreviewOpen, setIsPublicPreviewOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrScannerTarget, setQrScannerTarget] = useState(null);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, scanner: null });
   const [confirmStatusModal, setConfirmStatusModal] = useState({ isOpen: false, scanner: null });
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,241 +63,363 @@ export const ReviewScannersModule = () => {
   // Feedback Toast
   const [feedback, setFeedback] = useState({ show: false, message: '' });
 
-  // Form State for Create Scanner
-  const [createForm, setCreateForm] = useState({
-    clientName: clients[0]?.name || 'Aura Luxury Beauty',
-    placeName: 'Aura Flagship Salon & Spa - Bandra',
-    placeId: 'ChIJN1t_t_x55zsR9999',
-    googleUrl: 'https://search.google.com/local/writereview?placeid=ChIJN1t_t_x55zsR9999',
-    frequency: 'Daily (Every 24 Hours)',
-    alertThreshold: 'Rating below 4.0',
+  // New Client Form State (Option B)
+  const [newClientForm, setNewClientForm] = useState({ name: '', email: '', phone: '', company: '' });
+
+  // Form State for Deploying/Editing Scanner
+  const [editMode, setEditMode] = useState(false); // false = create, true = edit
+  const [scannerForm, setScannerForm] = useState({
+    id: null,
+    clientName: clients[0]?.name || 'Dev Cafe',
+    name: 'Dev Cafe Review',
+    slug: 'dev-cafe-review',
+    googleReviewUrl: 'https://search.google.com/local/writereview?placeid=ChIJN1t_t_x55zsR9999',
+    ratingRequired: true,
+    questions: [
+      {
+        id: 'q1',
+        question: 'What did you like most?',
+        type: 'dropdown',
+        required: true,
+        options: [
+          { id: 'o1', label: 'Food & Quality', value: 'Food & Quality' },
+          { id: 'o2', label: 'Customer Service', value: 'Customer Service' },
+          { id: 'o3', label: 'Ambience & Vibe', value: 'Ambience & Vibe' },
+          { id: 'o4', label: 'Staff Attention', value: 'Staff Attention' }
+        ]
+      },
+      {
+        id: 'q2',
+        question: 'What stood out to you?',
+        type: 'dropdown',
+        required: true,
+        options: [
+          { id: 'o5', label: 'Friendly Staff', value: 'Friendly Staff' },
+          { id: 'o6', label: 'Quick Service', value: 'Quick Service' },
+          { id: 'o7', label: 'Great Presentation', value: 'Great Presentation' },
+          { id: 'o8', label: 'Clean Environment', value: 'Clean Environment' }
+        ]
+      },
+      {
+        id: 'q3',
+        question: 'How was your overall experience?',
+        type: 'dropdown',
+        required: true,
+        options: [
+          { id: 'o9', label: 'Excellent', value: 'Excellent' },
+          { id: 'o10', label: 'Very Good', value: 'Very Good' },
+          { id: 'o11', label: 'Good', value: 'Good' },
+          { id: 'o12', label: 'Satisfactory', value: 'Satisfactory' }
+        ]
+      }
+    ],
+    aiSettings: { tone: 'Friendly & Professional', length: 'Medium' }
   });
 
-  // Destination URL Config Form State
-  const [destinationUrlInput, setDestinationUrlInput] = useState('');
-  const [isEditingDestination, setIsEditingDestination] = useState(false);
-  const [urlError, setUrlError] = useState('');
-
-  // AI Response Generator State
-  const [sampleReviewIndex, setSampleReviewIndex] = useState(0);
-  const [aiTone, setAiTone] = useState('Editorial & Luxury');
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [editedAiResponse, setEditedAiResponse] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
-
-  const sampleReviews = [
-    {
-      author: 'Elena Rostova',
-      rating: 5,
-      date: 'Yesterday',
-      text: 'The brand aesthetic and digital service level is unmatched! Exceptional ambiance and staff attention to detail.',
-    },
-    {
-      author: 'Vikram Malhotra',
-      rating: 3,
-      date: '3 days ago',
-      text: 'Good experience overall, but the appointment delay was roughly 20 minutes. Hope scheduling improves.',
-    },
-    {
-      author: 'Ananya Sharma',
-      rating: 1,
-      date: '1 week ago',
-      text: 'Extremely disappointing follow-up regarding our custom order inquiry. Expected much better from ASN Media client standards.',
-    },
-  ];
-
-  const aiPresetResponses = {
-    'Editorial & Luxury': [
-      "Dear Elena, We are deeply honored by your gracious compliments. Curating an exceptional aesthetic experience remains our guiding commitment. We look forward to welcoming you back.",
-      "Dear Vikram, Thank you for sharing your valued feedback. While we are pleased you enjoyed our ambiance, we regret the delay in your schedule. We are actively refining our conciergerie protocol.",
-      "Dear Ananya, Please accept our sincere apologies for not meeting the luxury standard you rightfully expect. Our executive management is personally inspecting your account to ensure an immediate resolution."
-    ],
-    'Warm & Professional': [
-      "Hi Elena! Thank you so much for the glowing 5-star review! Our team is thrilled to hear you had such a wonderful experience.",
-      "Hi Vikram, thanks for letting us know! We apologize for the wait time you experienced and appreciate your patience as we streamline our appointment system.",
-      "Hi Ananya, we are truly sorry to hear about your experience. Your satisfaction is our priority and we'd love the opportunity to make this right immediately."
-    ]
-  };
+  const isCreateRoute = location.pathname.endsWith('/scanners/create') || isCreateModalOpen;
 
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, location.pathname]);
-
-  useEffect(() => {
-    if (selectedScanner) {
-      setDestinationUrlInput(
-        selectedScanner.googleUrl || `https://search.google.com/local/writereview?placeid=${selectedScanner.placeId}`
-      );
-      setEditedAiResponse(
-        aiPresetResponses[aiTone][sampleReviewIndex] || aiPresetResponses['Editorial & Luxury'][0]
-      );
-    }
-  }, [selectedScanner, sampleReviewIndex, aiTone]);
 
   const showToast = (message) => {
     setFeedback({ show: true, message });
     setTimeout(() => setFeedback({ show: false, message: '' }), 3000);
   };
 
+  const handleOpenCreate = () => {
+    setEditMode(false);
+    setScannerForm({
+      id: null,
+      clientName: clients[0]?.name || 'Dev Cafe',
+      name: `${clients[0]?.name || 'Dev Cafe'} Review Scanner`,
+      slug: `${(clients[0]?.name || 'dev-cafe').toLowerCase().replace(/[^a-z0-9]/g, '-')}-review`,
+      googleReviewUrl: 'https://g.page/r/example/review',
+      ratingRequired: true,
+      questions: [
+        {
+          id: `q_${Date.now()}_1`,
+          question: 'What did you like most?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o1', label: 'Food & Quality', value: 'Food & Quality' },
+            { id: 'o2', label: 'Customer Service', value: 'Customer Service' },
+            { id: 'o3', label: 'Ambience & Vibe', value: 'Ambience & Vibe' },
+            { id: 'o4', label: 'Staff Attention', value: 'Staff Attention' }
+          ]
+        },
+        {
+          id: `q_${Date.now()}_2`,
+          question: 'What stood out to you?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o5', label: 'Friendly Staff', value: 'Friendly Staff' },
+            { id: 'o6', label: 'Quick Service', value: 'Quick Service' },
+            { id: 'o7', label: 'Great Presentation', value: 'Great Presentation' },
+            { id: 'o8', label: 'Clean Environment', value: 'Clean Environment' }
+          ]
+        },
+        {
+          id: `q_${Date.now()}_3`,
+          question: 'How was your overall experience?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o9', label: 'Excellent', value: 'Excellent' },
+            { id: 'o10', label: 'Very Good', value: 'Very Good' },
+            { id: 'o11', label: 'Good', value: 'Good' },
+            { id: 'o12', label: 'Satisfactory', value: 'Satisfactory' }
+          ]
+        }
+      ],
+      aiSettings: { tone: 'Friendly & Professional', length: 'Medium' }
+    });
+    setIsCreateModalOpen(true);
+    navigate('/admin/scanners/create');
+  };
+
+  const handleOpenEdit = (scn) => {
+    setEditMode(true);
+    setScannerForm({
+      id: scn.id || scn._id,
+      clientName: scn.clientName,
+      name: scn.name || scn.placeName || `${scn.clientName} Review`,
+      slug: scn.slug || (scn.clientName || 'client').toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      googleReviewUrl: scn.googleReviewUrl || scn.googleUrl || '',
+      ratingRequired: scn.ratingRequired !== false,
+      questions: scn.questions && scn.questions.length > 0 ? scn.questions : [
+        {
+          id: 'q1',
+          question: 'What did you like most?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o1', label: 'Food & Quality', value: 'Food & Quality' },
+            { id: 'o2', label: 'Customer Service', value: 'Customer Service' }
+          ]
+        }
+      ],
+      aiSettings: scn.aiSettings || { tone: 'Friendly & Professional', length: 'Medium' }
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  // Dynamic Questions Helpers
+  const handleAddQuestion = () => {
+    setScannerForm((prev) => ({
+      ...prev,
+      questions: [
+        ...prev.questions,
+        {
+          id: `q_${Date.now()}`,
+          question: 'New Question?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: `o_${Date.now()}_1`, label: 'Option 1', value: 'Option 1' },
+            { id: `o_${Date.now()}_2`, label: 'Option 2', value: 'Option 2' }
+          ]
+        }
+      ]
+    }));
+  };
+
+  const handleRemoveQuestion = (qIdx) => {
+    setScannerForm((prev) => ({
+      ...prev,
+      questions: prev.questions.filter((_, idx) => idx !== qIdx)
+    }));
+  };
+
+  const handleQuestionTextChange = (qIdx, text) => {
+    setScannerForm((prev) => {
+      const updated = [...prev.questions];
+      updated[qIdx].question = text;
+      return { ...prev, questions: updated };
+    });
+  };
+
+  const handleAddOption = (qIdx) => {
+    setScannerForm((prev) => {
+      const updated = [...prev.questions];
+      const newOpt = { id: `opt_${Date.now()}`, label: 'New Option', value: 'New Option' };
+      updated[qIdx].options = [...(updated[qIdx].options || []), newOpt];
+      return { ...prev, questions: updated };
+    });
+  };
+
+  const handleRemoveOption = (qIdx, oIdx) => {
+    setScannerForm((prev) => {
+      const updated = [...prev.questions];
+      updated[qIdx].options = updated[qIdx].options.filter((_, idx) => idx !== oIdx);
+      return { ...prev, questions: updated };
+    });
+  };
+
+  const handleOptionLabelChange = (qIdx, oIdx, text) => {
+    setScannerForm((prev) => {
+      const updated = [...prev.questions];
+      updated[qIdx].options[oIdx].label = text;
+      updated[qIdx].options[oIdx].value = text;
+      return { ...prev, questions: updated };
+    });
+  };
+
+  // Create New Client Inline (Option B)
+  const handleCreateNewClient = (e) => {
+    e.preventDefault();
+    if (!newClientForm.name) return;
+    const newId = addClient(newClientForm);
+    setScannerForm((prev) => ({ ...prev, clientName: newClientForm.name }));
+    setIsNewClientModalOpen(false);
+    setNewClientForm({ name: '', email: '', phone: '', company: '' });
+    showToast(`New client "${newClientForm.name}" created and assigned!`);
+  };
+
+  // Scanner Form Submit
+  const handleSubmitScanner = (e) => {
+    e.preventDefault();
+
+    if (!scannerForm.googleReviewUrl.startsWith('http://') && !scannerForm.googleReviewUrl.startsWith('https://')) {
+      showToast('Google Destination URL must start with http:// or https://');
+      return;
+    }
+
+    if (!scannerForm.questions || scannerForm.questions.length === 0) {
+      showToast('Please add at least one question to the scanner');
+      return;
+    }
+
+    if (editMode && scannerForm.id) {
+      updateScanner(scannerForm.id, scannerForm);
+      showToast('Review Scanner updated successfully!');
+    } else {
+      addScanner(scannerForm);
+      showToast('New AI Review Scanner deployed successfully!');
+    }
+
+    setIsCreateModalOpen(false);
+    navigate('/admin/scanners');
+  };
+
+  const handleToggleStatus = (scn) => {
+    const nextStatus = scn.status === 'Active' ? 'Paused' : 'Active';
+    updateScanner(scn.id || scn._id, { status: nextStatus });
+    showToast(`Scanner status set to ${nextStatus}`);
+    setConfirmStatusModal({ isOpen: false, scanner: null });
+  };
+
+  const handleDelete = (scn) => {
+    deleteScanner(scn.id || scn._id);
+    showToast(`Scanner for ${scn.clientName} deleted.`);
+    setConfirmDeleteModal({ isOpen: false, scanner: null });
+  };
+
+  const openQrModal = (scn) => {
+    setQrScannerTarget(scn);
+    setIsQrModalOpen(true);
+  };
+
   const filteredScanners = (reviewScanners || []).filter((scn) => {
+    const searchLower = search.toLowerCase();
     const matchesSearch =
-      scn.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      scn.placeName.toLowerCase().includes(search.toLowerCase()) ||
-      scn.placeId.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || scn.status.toLowerCase() === statusFilter.toLowerCase();
+      (scn.clientName || '').toLowerCase().includes(searchLower) ||
+      (scn.name || scn.placeName || '').toLowerCase().includes(searchLower) ||
+      (scn.slug || '').toLowerCase().includes(searchLower);
+    const matchesStatus = statusFilter === 'All' || (scn.status || 'Active').toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
   const totalPages = Math.ceil(filteredScanners.length / pageSize) || 1;
   const paginatedScanners = filteredScanners.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const handleRowClick = (scn) => {
-    setSelectedScanner(scn);
-    setDrawerTab('Overview');
-    setIsDrawerOpen(true);
-  };
-
-  const handleManualScan = (scannerId) => {
-    setIsScanning(true);
-    setTimeout(() => {
-      updateScanner(scannerId, {
-        totalReviewsScraped: (selectedScanner?.totalReviewsScraped || 10) + 3,
-        lastScanDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      });
-      if (selectedScanner && selectedScanner.id === scannerId) {
-        setSelectedScanner((prev) => ({
-          ...prev,
-          totalReviewsScraped: prev.totalReviewsScraped + 3,
-          lastScanDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        }));
-      }
-      setIsScanning(false);
-      showToast('Scan complete! Synced 3 new Google Place reviews.');
-    }, 1000);
-  };
-
-  const isCreateScannerMode = location.pathname.endsWith('/scanners/create') || isCreateModalOpen;
-
-  const handleOpenCreateScanner = () => {
-    setIsCreateModalOpen(true);
-    navigate('/admin/scanners/create');
-  };
-
-  const handleCreateSubmit = (e) => {
-    e.preventDefault();
-    addScanner(createForm);
-    setIsCreateModalOpen(false);
-    navigate('/admin/scanners');
-    showToast('New Review Scanner deployed successfully!');
-  };
-
-  const handleSaveDestinationUrl = () => {
-    if (!destinationUrlInput.startsWith('http://') && !destinationUrlInput.startsWith('https://')) {
-      setUrlError('URL must begin with http:// or https://');
-      return;
-    }
-    setUrlError('');
-    updateScanner(selectedScanner.id, { googleUrl: destinationUrlInput });
-    setSelectedScanner((prev) => ({ ...prev, googleUrl: destinationUrlInput }));
-    setIsEditingDestination(false);
-    showToast('Google Review Destination URL saved!');
-  };
-
-  const handleToggleScannerStatus = () => {
-    if (!confirmStatusModal.scanner) return;
-    const newStatus = confirmStatusModal.scanner.status === 'Active' ? 'Paused' : 'Active';
-    updateScanner(confirmStatusModal.scanner.id, { status: newStatus });
-    if (selectedScanner && selectedScanner.id === confirmStatusModal.scanner.id) {
-      setSelectedScanner((prev) => ({ ...prev, status: newStatus }));
-    }
-    setConfirmStatusModal({ isOpen: false, scanner: null });
-    showToast(`Scanner status updated to ${newStatus}.`);
-  };
-
-  const handleGenerateAiResponse = () => {
-    setIsGeneratingAi(true);
-    setTimeout(() => {
-      const presets = aiPresetResponses[aiTone] || aiPresetResponses['Editorial & Luxury'];
-      setEditedAiResponse(presets[sampleReviewIndex]);
-      setIsGeneratingAi(false);
-      showToast('Generated new AI response recommendation!');
-    }, 600);
-  };
-
-  const handleCopyText = (text) => {
-    navigator.clipboard.writeText(text);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-    showToast('Copied to clipboard!');
-  };
-
   const columns = [
     {
-      header: 'Place / Business Unit',
-      key: 'placeName',
+      header: 'Client & Scanner Name',
+      key: 'clientName',
       render: (row) => (
         <div>
-          <div className="font-semibold text-[#111111] flex items-center gap-1.5 cursor-pointer hover:text-[#8E722A]" onClick={() => handleRowClick(row)}>
+          <div className="font-semibold text-[#111111] flex items-center gap-1.5 cursor-pointer hover:text-[#8E722A]" onClick={() => { setSelectedScanner(row); setIsDrawerOpen(true); }}>
             <MapPin className="w-3.5 h-3.5 text-[#8E722A] shrink-0" />
-            <span>{row.placeName}</span>
+            <span>{row.clientName}</span>
           </div>
-          <div className="text-[10px] text-[#685C43] font-mono ml-5">ID: {row.placeId}</div>
+          <div className="text-[11px] text-[#685C43] font-mono ml-5">
+            {row.name || row.placeName || 'Review Scanner'} • <span className="text-[#8E722A]">/review/{row.slug}</span>
+          </div>
         </div>
       ),
-    },
-    {
-      header: 'Assigned Client',
-      key: 'clientName',
-      render: (row) => <span className="font-mono text-xs text-[#111111]">{row.clientName}</span>,
-    },
-    {
-      header: 'Avg Rating',
-      key: 'avgRating',
-      render: (row) => (
-        <div className="flex items-center gap-1 font-mono font-bold text-[#111111]">
-          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-          <span>{row.avgRating}</span>
-        </div>
-      ),
-    },
-    {
-      header: 'Reviews Scraped',
-      key: 'totalReviewsScraped',
-      render: (row) => <span className="font-mono text-[#685C43] text-xs">{row.totalReviewsScraped} reviews</span>,
     },
     {
       header: 'Status',
       key: 'status',
-      render: (row) => <StatusBadge status={row.status} />,
+      render: (row) => <StatusBadge status={row.status || 'Active'} />,
+    },
+    {
+      header: 'Scans',
+      key: 'scans',
+      render: (row) => <span className="font-mono text-xs font-bold text-[#111111]">{row.metrics?.scans || row.totalReviewsScraped || 42}</span>,
+    },
+    {
+      header: 'Reviews Generated',
+      key: 'reviewsGenerated',
+      render: (row) => <span className="font-mono text-xs text-[#8E722A] font-semibold">{row.metrics?.reviewsGenerated || 28}</span>,
+    },
+    {
+      header: 'Google Clicks',
+      key: 'googleClicked',
+      render: (row) => <span className="font-mono text-xs text-emerald-600 font-semibold">{row.metrics?.googleClicked || 24}</span>,
     },
     {
       header: 'Actions',
       key: 'actions',
       align: 'right',
       render: (row) => (
-        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => handleManualScan(row.id)}
-            disabled={isScanning}
-            className="px-2.5 py-1 text-[10px] font-mono font-semibold bg-[#FAF8F3] border border-[#0A0A0A]/14 hover:bg-[#111111] hover:text-[#FAF8F3] text-[#111111] rounded-xs transition-colors flex items-center gap-1"
+            onClick={() => openQrModal(row)}
+            className="p-1.5 text-xs font-mono font-medium bg-[#FAF8F3] border border-[#0A0A0A]/14 hover:bg-[#8E722A] hover:text-white text-[#111111] rounded transition-colors"
+            title="View QR Code"
           >
-            <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin text-[#8E722A]' : ''}`} />
-            <span>Scan</span>
+            <QrCode className="w-3.5 h-3.5" />
           </button>
+
           <button
-            onClick={() => handleRowClick(row)}
-            className="px-2.5 py-1 text-[10px] font-mono font-bold bg-[#8E722A] text-white hover:bg-[#725B20] rounded-xs transition-colors"
+            onClick={() => handleOpenEdit(row)}
+            className="p-1.5 text-xs font-mono font-medium bg-[#FAF8F3] border border-[#0A0A0A]/14 hover:bg-[#111111] hover:text-white text-[#111111] rounded transition-colors"
+            title="Edit Scanner & Questions"
           >
-            Inspect
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => setConfirmStatusModal({ isOpen: true, scanner: row })}
+            className={`p-1.5 text-xs font-mono font-medium rounded transition-colors border ${row.status === 'Active'
+              ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+              }`}
+            title={row.status === 'Active' ? 'Pause Scanner' : 'Activate Scanner'}
+          >
+            <Power className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => setConfirmDeleteModal({ isOpen: true, scanner: row })}
+            className="p-1.5 text-xs font-mono font-medium bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 rounded transition-colors"
+            title="Delete Scanner"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ),
     },
   ];
 
-  if (isCreateScannerMode) {
+  // RENDER CREATE / EDIT SCANNER FORM VIEW
+  if (isCreateRoute) {
     return (
-      <div className="w-full space-y-6 font-body">
+      <div className="w-full space-y-6 font-body max-w-4xl mx-auto">
         {feedback.show && (
           <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
             <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
@@ -298,60 +427,190 @@ export const ReviewScannersModule = () => {
           </div>
         )}
 
+        {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#0A0A0A]/08 gap-3">
           <div>
             <div className="text-xs font-mono text-[#685C43] mb-1">
-              <span>Review Scanners</span> / <span className="font-bold text-[#111111]">Deploy Scanner</span>
+              <span>Review Scanners</span> / <span className="font-bold text-[#111111]">{editMode ? 'Edit Scanner' : 'Deploy Scanner'}</span>
             </div>
             <h2 className="font-display text-2xl font-normal text-[#111111]">
-              Deploy New Google Review Scanner Monitor
+              {editMode ? 'Edit AI Review Scanner Configuration' : 'Deploy New AI Review Scanner'}
             </h2>
           </div>
 
           <button
             onClick={() => { setIsCreateModalOpen(false); navigate('/admin/scanners'); }}
-            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded-xs transition-colors"
+            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded transition-colors"
           >
             ← Back to Scanners
           </button>
         </div>
 
-        <form onSubmit={handleCreateSubmit} className="space-y-6">
-          <AdminCard title="01. Client & Business Unit Identity" className="space-y-4">
-            <FormSelect
-              label="Assigned Client"
-              value={createForm.clientName}
-              onChange={(e) => setCreateForm({ ...createForm, clientName: e.target.value })}
-              options={clients.map((c) => c.name)}
-            />
+        <form onSubmit={handleSubmitScanner} className="space-y-6">
+          {/* SECTION 1: Client Selection */}
+          <AdminCard title="01. Assigned Client & Basic Details" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+              <div className="sm:col-span-2">
+                <FormSelect
+                  label="Select Client (Option A)"
+                  value={scannerForm.clientName}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    setScannerForm({
+                      ...scannerForm,
+                      clientName: chosen,
+                      name: `${chosen} Review Scanner`,
+                      slug: `${chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-review`
+                    });
+                  }}
+                  options={clients.map((c) => c.name)}
+                />
+              </div>
 
-            <FormInput
-              label="Google Place Name / Business Unit"
-              value={createForm.placeName}
-              onChange={(e) => setCreateForm({ ...createForm, placeName: e.target.value })}
-              placeholder="e.g. Aura Flagship Salon & Spa - Bandra"
-              required
-            />
+              <button
+                type="button"
+                onClick={() => setIsNewClientModalOpen(true)}
+                className="py-2.5 px-4 bg-[#8E722A]/10 hover:bg-[#8E722A] text-[#8E722A] hover:text-white border border-[#8E722A]/30 text-xs font-mono font-semibold rounded transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Create New Client</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormInput
+                label="Scanner Display Name"
+                value={scannerForm.name}
+                onChange={(e) => setScannerForm({ ...scannerForm, name: e.target.value })}
+                placeholder="e.g. Dev Cafe Bandra Scanner"
+                required
+              />
+
+              <FormInput
+                label="Public URL Slug"
+                value={scannerForm.slug}
+                onChange={(e) => setScannerForm({ ...scannerForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                placeholder="dev-cafe-review"
+                required
+              />
+            </div>
           </AdminCard>
 
-          <AdminCard title="02. Google Integration Parameters" className="space-y-4">
+          {/* SECTION 2: Google Destination URL */}
+          <AdminCard title="02. Google Review Destination URL" className="space-y-4">
             <FormInput
-              label="Google Place ID"
-              value={createForm.placeId}
-              onChange={(e) => setCreateForm({ ...createForm, placeId: e.target.value })}
-              placeholder="ChIJN1t_t_x55zsR9999..."
+              label="Target Google Review URL"
+              value={scannerForm.googleReviewUrl}
+              onChange={(e) => setScannerForm({ ...scannerForm, googleReviewUrl: e.target.value })}
+              placeholder="https://g.page/r/your-google-place-id/review"
               required
             />
-
-            <FormInput
-              label="Target Google Destination Review URL"
-              value={createForm.googleUrl}
-              onChange={(e) => setCreateForm({ ...createForm, googleUrl: e.target.value })}
-              placeholder="https://search.google.com/local/writereview?placeid=..."
-              required
-            />
+            <p className="text-[11px] font-mono text-[#685C43]">
+              Customers will be redirected to this Google URL after their AI review is generated and ready to post.
+            </p>
           </AdminCard>
 
+          {/* SECTION 3: Dynamic Review Questions Builder */}
+          <AdminCard title="03. Dynamic Review Questions Builder" className="space-y-6">
+            <p className="text-xs font-mono text-[#685C43]">
+              Configure the questions and options shown to customers on the review page.
+            </p>
+
+            <div className="space-y-6">
+              {scannerForm.questions.map((q, qIdx) => (
+                <div key={q.id || qIdx} className="p-4 bg-[#FAF8F3] border border-[#0A0A0A]/10 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between gap-3 pb-2 border-b border-[#0A0A0A]/08">
+                    <span className="font-mono text-xs font-bold text-[#8E722A]">Question {qIdx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQuestion(qIdx)}
+                      className="text-xs font-mono text-red-600 hover:underline flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove Question
+                    </button>
+                  </div>
+
+                  <FormInput
+                    label="Question Text"
+                    value={q.question}
+                    onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                    placeholder="e.g. What did you like most?"
+                    required
+                  />
+
+                  {/* Options List */}
+                  <div className="space-y-2 pt-2">
+                    <label className="block text-[11px] font-mono text-[#685C43]">Available Dropdown Options:</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(q.options || []).map((opt, oIdx) => (
+                        <div key={opt.id || oIdx} className="flex items-center gap-2 bg-white p-2 rounded border border-[#0A0A0A]/10">
+                          <input
+                            type="text"
+                            value={opt.label}
+                            onChange={(e) => handleOptionLabelChange(qIdx, oIdx, e.target.value)}
+                            className="flex-1 text-xs font-body px-2 py-1 bg-transparent border-b border-gray-200 focus:border-[#8E722A] focus:outline-none"
+                            placeholder="Option Label"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(qIdx, oIdx)}
+                            className="text-red-500 hover:text-red-700 p-1 text-xs"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddOption(qIdx)}
+                      className="mt-2 text-xs font-mono text-[#8E722A] hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> Add Option
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddQuestion}
+              className="w-full py-2.5 bg-white border border-dashed border-[#8E722A] text-[#8E722A] font-mono text-xs font-bold rounded-lg hover:bg-[#8E722A]/05 transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Add Another Question
+            </button>
+          </AdminCard>
+
+          {/* SECTION 4: Rating & AI Settings */}
+          <AdminCard title="04. Star Rating & AI Settings" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormSelect
+                label="Star Rating Requirement"
+                value={scannerForm.ratingRequired ? 'Required' : 'Optional'}
+                onChange={(e) => setScannerForm({ ...scannerForm, ratingRequired: e.target.value === 'Required' })}
+                options={['Required', 'Optional']}
+              />
+
+              <FormSelect
+                label="AI Review Tone"
+                value={scannerForm.aiSettings?.tone || 'Friendly & Professional'}
+                onChange={(e) => setScannerForm({ ...scannerForm, aiSettings: { ...scannerForm.aiSettings, tone: e.target.value } })}
+                options={['Friendly & Professional', 'Editorial & Luxury', 'Short & Direct', 'Enthusiastic']}
+              />
+
+              <FormSelect
+                label="AI Review Target Length"
+                value={scannerForm.aiSettings?.length || 'Medium'}
+                onChange={(e) => setScannerForm({ ...scannerForm, aiSettings: { ...scannerForm.aiSettings, length: e.target.value } })}
+                options={['Short', 'Medium', 'Detailed']}
+              />
+            </div>
+          </AdminCard>
+
+          {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#0A0A0A]/10">
             <button
               type="button"
@@ -362,459 +621,294 @@ export const ReviewScannersModule = () => {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors"
+              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded transition-colors"
             >
-              Deploy Review Scanner
+              {editMode ? 'Save Changes' : 'Deploy Review Scanner'}
             </button>
           </div>
         </form>
+
+        {/* Option B: Create New Client Inline Modal */}
+        {isNewClientModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 border border-[#8E722A]">
+              <div className="flex items-center justify-between border-b pb-3">
+                <h3 className="font-display font-bold text-lg text-[#111]">Create New Client Profile</h3>
+                <button onClick={() => setIsNewClientModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateNewClient} className="space-y-4">
+                <FormInput
+                  label="Client Name"
+                  value={newClientForm.name}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })}
+                  placeholder="e.g. Dev Cafe"
+                  required
+                />
+                <FormInput
+                  label="Contact Email"
+                  type="email"
+                  value={newClientForm.email}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })}
+                  placeholder="contact@client.com"
+                />
+                <FormInput
+                  label="Phone Number"
+                  value={newClientForm.phone}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, phone: e.target.value })}
+                  placeholder="+91 98765 43210"
+                />
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewClientModalOpen(false)}
+                    className="px-4 py-2 text-xs font-mono text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#8E722A] text-white text-xs font-mono font-bold rounded"
+                  >
+                    Save & Assign Client
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
+  // MAIN ADMIN DASHBOARD TABLE VIEW
   return (
     <div className="space-y-6 font-body">
-      {/* Toast Feedback */}
+      {/* Feedback Toast */}
       {feedback.show && (
-        <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A] animate-fade-in">
+        <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
           <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
           <span>{feedback.message}</span>
         </div>
       )}
 
-      {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
+      {/* KPI Overview Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="ACTIVE SCANNERS"
           value={reviewScanners.length}
           trend={2}
-          trendLabel="google place monitors"
+          trendLabel="total deployed"
           icon={Star}
           accentColor="gold"
         />
         <KpiCard
-          label="AVERAGE RATING"
-          value="4.8 / 5.0"
-          trend={5}
-          trendLabel="across client places"
+          label="TOTAL SCANS"
+          value={reviewScanners.reduce((acc, s) => acc + (s.metrics?.scans || 42), 0)}
+          trend={12}
+          trendLabel="customer visits"
+          icon={QrCode}
+          accentColor="black"
+        />
+        <KpiCard
+          label="AI REVIEWS GENERATED"
+          value={reviewScanners.reduce((acc, s) => acc + (s.metrics?.reviewsGenerated || 28), 0)}
+          trend={18}
+          trendLabel="ready reviews"
           icon={Sparkles}
-          accentColor="amber"
+          accentColor="gold"
         />
         <KpiCard
-          label="POSITIVE SENTIMENT"
-          value="94.2%"
-          trend={3}
-          trendLabel="positive review ratio"
-          icon={CheckCircle2}
-          accentColor="emerald"
-        />
-        <KpiCard
-          label="TOTAL REVIEWS SCRAPED"
-          value="680+"
-          trend={14}
-          trendLabel="scraped feedback items"
-          icon={RefreshCw}
-          accentColor="charcoal"
+          label="GOOGLE REDIRECTS"
+          value={reviewScanners.reduce((acc, s) => acc + (s.metrics?.googleClicked || 24), 0)}
+          trend={15}
+          trendLabel="posted on Google"
+          icon={TrendingUp}
+          accentColor="black"
         />
       </div>
 
-      {/* Controls Bar */}
-      <FilterBar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search place name, client, or Place ID..."
-        filterOptions={['All', 'Active', 'Paused']}
-        selectedFilter={statusFilter}
-        onFilterChange={setStatusFilter}
-        actions={
-          <button
-            onClick={handleOpenCreateScanner}
-            className="px-3.5 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors flex items-center gap-1.5"
+      {/* Action Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#0A0A0A]/10">
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search scanners by client, name, slug..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-3.5 py-2 text-xs font-mono bg-[#FAF8F3] border border-[#0A0A0A]/14 rounded w-64 focus:outline-none focus:border-[#8E722A]"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3.5 py-2 text-xs font-mono bg-[#FAF8F3] border border-[#0A0A0A]/14 rounded focus:outline-none"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create Scanner</span>
-          </button>
-        }
+            <option value="All">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Paused">Paused</option>
+          </select>
+        </div>
+
+        <button
+          onClick={handleOpenCreate}
+          className="px-4 py-2 bg-[#111111] hover:bg-[#8E722A] text-[#F7F5EF] text-xs font-mono font-bold rounded transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4 text-[#8E722A]" />
+          <span> Deploy New Review Scanner</span>
+        </button>
+      </div>
+
+      {/* Main Table */}
+      <DataTable
+        columns={columns}
+        data={paginatedScanners}
+        onRowClick={(row) => { setSelectedScanner(row); setIsDrawerOpen(true); }}
       />
 
-      {/* Main Scanners Table */}
-      <AdminCard noPadding>
-        <DataTable
-          columns={columns}
-          data={paginatedScanners}
-          onRowClick={handleRowClick}
-          emptyTitle="No Review Scanners Configured"
-          emptyMessage="Deploy a new scanner to monitor Google Place ratings."
-        />
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredScanners.length}
-          itemsPerPage={pageSize}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={setPageSize}
-        />
-      </AdminCard>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        totalItems={filteredScanners.length}
+      />
 
-      {/* ========================================================= */}
-      {/* SCANNER WORKSPACE SLIDE DRAWER (WITH 4 ADVANCED TABS)      */}
-      {/* ========================================================= */}
+      {/* QR Code Preview & Download Modal */}
+      {isQrModalOpen && qrScannerTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#8E722A] relative">
+            <button
+              onClick={() => setIsQrModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-display font-bold text-lg text-[#111]">Review Scanner QR Code</h3>
+              <p className="font-mono text-xs text-[#685C43]">
+                {qrScannerTarget.clientName} • <span className="text-[#8E722A]">/review/{qrScannerTarget.slug}</span>
+              </p>
+            </div>
+
+            <QrCodeRenderer
+              url={`${window.location.origin}/review/${qrScannerTarget.slug}`}
+              clientName={qrScannerTarget.clientName}
+              scannerName={qrScannerTarget.name || `${qrScannerTarget.clientName} Review`}
+              size={240}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Slide Drawer for Inspection & Analytics */}
       <SlideDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        title={selectedScanner ? selectedScanner.placeName : 'Scanner Workspace'}
+        title={selectedScanner?.clientName || 'Scanner Details'}
       >
         {selectedScanner && (
-          <div className="space-y-6">
-            {/* Header info */}
-            <div className="p-4 bg-[#F7F5EF] rounded-sm border border-[#0A0A0A]/10 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-wider text-[#685C43]">Client: {selectedScanner.clientName}</span>
-                <StatusBadge status={selectedScanner.status} />
-              </div>
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs font-mono text-[#685C43]">Google Rating</span>
-                <div className="flex items-center gap-1 text-base font-bold font-mono text-[#111111]">
-                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span>{selectedScanner.avgRating} / 5.0</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Contextual Navigation Tabs */}
-            <div className="flex border-b border-[#0A0A0A]/10 overflow-x-auto no-scrollbar font-mono text-xs">
-              {[
-                { id: 'Overview', label: 'Overview' },
-                { id: 'QRCode', label: 'QR Generator' },
-                { id: 'Destination', label: 'Google Link' },
-                { id: 'AIResponse', label: 'AI Assistant' },
-              ].map((tab) => (
+          <div className="space-y-6 font-body text-xs">
+            <div className="flex border-b border-[#0A0A0A]/10">
+              {['Overview', 'Questions', 'QRCode', 'Analytics'].map((tab) => (
                 <button
-                  key={tab.id}
-                  onClick={() => setDrawerTab(tab.id)}
-                  className={`px-3 py-2 border-b-2 font-bold whitespace-nowrap transition-colors ${
-                    drawerTab === tab.id
-                      ? 'border-[#8E722A] text-[#8E722A]'
-                      : 'border-transparent text-[#685C43] hover:text-[#111111]'
-                  }`}
+                  key={tab}
+                  onClick={() => setDrawerTab(tab)}
+                  className={`px-4 py-2 font-mono text-xs font-semibold border-b-2 transition-colors ${drawerTab === tab ? 'border-[#8E722A] text-[#111111]' : 'border-transparent text-[#685C43]'
+                    }`}
                 >
-                  {tab.label}
+                  {tab}
                 </button>
               ))}
             </div>
 
-            {/* TAB 1: OVERVIEW */}
             {drawerTab === 'Overview' && (
-              <div className="space-y-4 text-xs font-body">
-                <div className="space-y-2">
-                  <h4 className="font-mono text-[10px] font-bold text-[#8E722A] uppercase tracking-wider">Sentiment Spectrum</h4>
-                  <div className="p-3 bg-white border border-[#0A0A0A]/08 rounded-xs space-y-2 font-mono">
-                    <div>
-                      <div className="flex justify-between text-[10px] text-[#685C43]">
-                        <span>Positive (5 Stars)</span>
-                        <span className="font-bold text-emerald-700">{selectedScanner.sentimentPctPositive}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-[#FAF8F3] rounded-full overflow-hidden mt-1">
-                        <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${selectedScanner.sentimentPctPositive}%` }} />
-                      </div>
-                    </div>
-                  </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-[#FAF8F3] rounded border border-[#0A0A0A]/10 space-y-2">
+                  <div className="font-semibold text-sm">{selectedScanner.clientName}</div>
+                  <div className="font-mono text-[#685C43]">Public Link: {window.location.origin}/review/{selectedScanner.slug}</div>
+                  <div className="font-mono text-[#685C43]">Google URL: {selectedScanner.googleReviewUrl || selectedScanner.googleUrl}</div>
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-mono text-[10px] font-bold text-[#8E722A] uppercase tracking-wider">Google Place Metadata</h4>
-                  <div className="p-3 bg-white border border-[#0A0A0A]/08 rounded-xs space-y-2 font-mono text-[11px]">
-                    <div className="flex justify-between border-b border-[#0A0A0A]/06 pb-1">
-                      <span className="text-[#685C43]">Google Place ID</span>
-                      <span className="font-bold text-[#111111]">{selectedScanner.placeId}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-[#0A0A0A]/06 pb-1">
-                      <span className="text-[#685C43]">Last Automatic Scan</span>
-                      <span className="text-[#111111]">{selectedScanner.lastScanDate}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#685C43]">Scanner State</span>
-                      <span className="font-bold text-[#111111]">{selectedScanner.status}</span>
-                    </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-gray-50 rounded border text-center">
+                    <div className="font-mono text-lg font-bold">{selectedScanner.metrics?.scans || 42}</div>
+                    <div className="text-gray-500 text-[10px] uppercase font-mono">Total Scans</div>
                   </div>
-                </div>
-
-                {/* Status Toggle Button */}
-                <div className="pt-4 border-t border-[#0A0A0A]/10 flex gap-2">
-                  <button
-                    onClick={() => setConfirmStatusModal({ isOpen: true, scanner: selectedScanner })}
-                    className={`w-full py-2.5 text-xs font-mono font-bold rounded-xs transition-colors flex items-center justify-center gap-2 border ${
-                      selectedScanner.status === 'Active'
-                        ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                        : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                    }`}
-                  >
-                    <Power className="w-4 h-4" />
-                    <span>{selectedScanner.status === 'Active' ? 'Pause Review Scanner' : 'Activate Scanner'}</span>
-                  </button>
-                  <button
-                    onClick={() => setIsPublicPreviewOpen(true)}
-                    className="py-2.5 px-4 bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] text-xs font-mono font-bold rounded-xs transition-colors flex items-center gap-1.5"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Public Preview</span>
-                  </button>
+                  <div className="p-3 bg-gray-50 rounded border text-center">
+                    <div className="font-mono text-lg font-bold text-[#8E722A]">{selectedScanner.metrics?.reviewsGenerated || 28}</div>
+                    <div className="text-gray-500 text-[10px] uppercase font-mono">Generated Reviews</div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* TAB 2: QR CODE GENERATOR */}
-            {drawerTab === 'QRCode' && (
-              <div className="space-y-4 font-body">
-                <div className="p-4 bg-white border border-[#0A0A0A]/10 rounded-sm text-center space-y-3">
-                  <div className="inline-block p-4 bg-[#FAF8F3] border-2 border-[#8E722A]/30 rounded-lg shadow-sm">
-                    {/* Visual QR Code Representation */}
-                    <div className="w-40 h-40 bg-[#111111] p-2 rounded-xs flex flex-col justify-between items-center relative overflow-hidden">
-                      <div className="grid grid-cols-5 gap-1.5 w-full h-full p-1 bg-white rounded-2xs">
-                        {Array.from({ length: 25 }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={`rounded-2xs ${
-                              (i * 7) % 3 === 0 || i === 0 || i === 4 || i === 20 || i === 24
-                                ? 'bg-[#111111]'
-                                : 'bg-[#FAF8F3]'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="bg-[#8E722A] text-white font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-2xs shadow-md">
-                          ASN
+            {drawerTab === 'Questions' && (
+              <div className="space-y-3">
+                {(selectedScanner.questions || []).map((q, idx) => (
+                  <div key={idx} className="p-3 bg-[#FAF8F3] rounded border border-[#0A0A0A]/10 space-y-1.5">
+                    <div className="font-bold text-[#111]">{q.question}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {(q.options || []).map((o, oIdx) => (
+                        <span key={oIdx} className="px-2 py-0.5 bg-white border rounded text-[10px] font-mono">
+                          {o.label}
                         </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-serif font-semibold text-sm text-[#111111]">{selectedScanner.placeName}</h4>
-                    <p className="text-[11px] font-mono text-[#685C43]">Google Review QR Code Card</p>
-                  </div>
-
-                  <div className="flex justify-center gap-2 pt-2 border-t border-[#0A0A0A]/08">
-                    <button
-                      onClick={() => showToast('QR Code SVG downloaded successfully!')}
-                      className="px-3 py-1.5 bg-[#111111] text-white text-xs font-mono font-bold rounded-xs hover:bg-[#8E722A] transition-colors flex items-center gap-1.5"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download QR (PNG)</span>
-                    </button>
-                    <button
-                      onClick={() => handleCopyText(`https://asnmedia.in/scanner/${selectedScanner.id}`)}
-                      className="px-3 py-1.5 bg-[#FAF8F3] border border-[#0A0A0A]/14 text-xs font-mono font-bold text-[#111111] hover:bg-[#8E722A] hover:text-white transition-colors flex items-center gap-1.5"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>Copy Link</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: GOOGLE DESTINATION CONFIG */}
-            {drawerTab === 'Destination' && (
-              <div className="space-y-4 font-body">
-                <div className="p-4 bg-white border border-[#0A0A0A]/10 rounded-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-[#111111] uppercase tracking-wider">Configured Google Review URL</span>
-                    {!isEditingDestination && (
-                      <button
-                        onClick={() => setIsEditingDestination(true)}
-                        className="text-xs font-mono text-[#8E722A] font-bold flex items-center gap-1 hover:underline"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        <span>Edit URL</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {isEditingDestination ? (
-                    <div className="space-y-3 pt-2">
-                      <FormInput
-                        label="Target Google Destination URL"
-                        value={destinationUrlInput}
-                        onChange={(e) => setDestinationUrlInput(e.target.value)}
-                        placeholder="https://search.google.com/local/writereview?placeid=..."
-                        error={urlError}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => { setIsEditingDestination(false); setUrlError(''); }}
-                          className="px-3 py-1.5 text-xs font-mono text-[#685C43]"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleSaveDestinationUrl}
-                          className="px-3 py-1.5 bg-[#8E722A] text-white text-xs font-mono font-bold rounded-xs hover:bg-[#725B20] transition-colors"
-                        >
-                          Save Target URL
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-[#FAF8F3] border border-[#0A0A0A]/08 rounded-xs font-mono text-xs text-[#111111] break-all flex items-center justify-between gap-2">
-                      <span className="truncate">{selectedScanner.googleUrl || `https://search.google.com/local/writereview?placeid=${selectedScanner.placeId}`}</span>
-                      <a
-                        href={selectedScanner.googleUrl || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#8E722A] hover:text-[#111111]"
-                      >
-                        <ExternalLink className="w-4 h-4 shrink-0" />
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: MOCK AI RESPONSE ASSISTANT */}
-            {drawerTab === 'AIResponse' && (
-              <div className="space-y-4 font-body">
-                <div className="p-4 bg-white border border-[#0A0A0A]/10 rounded-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-[#8E722A] uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4" />
-                      <span>AI Review Response Suite (Frontend Mock)</span>
-                    </span>
-                  </div>
-
-                  {/* Sample review selection */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-[#685C43] uppercase font-bold">Select Sample Customer Review</label>
-                    <select
-                      value={sampleReviewIndex}
-                      onChange={(e) => setSampleReviewIndex(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-xs font-mono bg-[#FAF8F3] border border-[#0A0A0A]/14 rounded-xs text-[#111111]"
-                    >
-                      {sampleReviews.map((r, i) => (
-                        <option key={i} value={i}>{r.author} ({r.rating}★) - "{r.text.substring(0, 30)}..."</option>
                       ))}
-                    </select>
-                  </div>
-
-                  {/* Customer Review Snippet */}
-                  <div className="p-3 bg-[#FAF8F3] border border-[#0A0A0A]/08 rounded-xs space-y-1 text-xs">
-                    <div className="flex justify-between font-mono text-[10px] text-[#685C43]">
-                      <span className="font-bold text-[#111111]">{sampleReviews[sampleReviewIndex].author}</span>
-                      <span className="text-amber-500 font-bold">{sampleReviews[sampleReviewIndex].rating}★</span>
-                    </div>
-                    <p className="italic font-serif text-[#111111]">"{sampleReviews[sampleReviewIndex].text}"</p>
-                  </div>
-
-                  {/* Tone selector */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <FormSelect
-                      label="Response Tone"
-                      value={aiTone}
-                      onChange={(e) => setAiTone(e.target.value)}
-                      options={['Editorial & Luxury', 'Warm & Professional']}
-                    />
-                    <div className="flex items-end">
-                      <button
-                        onClick={handleGenerateAiResponse}
-                        disabled={isGeneratingAi}
-                        className="w-full py-2 bg-[#111111] text-white hover:bg-[#8E722A] text-xs font-mono font-bold rounded-xs transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <Sparkles className={`w-3.5 h-3.5 ${isGeneratingAi ? 'animate-spin text-[#8E722A]' : ''}`} />
-                        <span>Regenerate AI</span>
-                      </button>
                     </div>
                   </div>
-
-                  {/* Editable AI Suggestion */}
-                  <div className="space-y-1 pt-2 border-t border-[#0A0A0A]/08">
-                    <label className="text-[10px] font-mono text-[#685C43] uppercase font-bold">Suggested Response Recommendation</label>
-                    <textarea
-                      rows={4}
-                      value={editedAiResponse}
-                      onChange={(e) => setEditedAiResponse(e.target.value)}
-                      className="w-full p-3 text-xs font-body border border-[#0A0A0A]/14 rounded-xs focus:outline-none focus:border-[#8E722A]"
-                    />
-                    <div className="flex justify-end pt-1">
-                      <button
-                        onClick={() => handleCopyText(editedAiResponse)}
-                        className="px-3 py-1.5 bg-[#8E722A] text-white text-xs font-mono font-bold rounded-xs hover:bg-[#725B20] transition-colors flex items-center gap-1"
-                      >
-                        {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{isCopied ? 'Copied Response!' : 'Copy to Clipboard'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </SlideDrawer>
-
-      {/* PUBLIC REVIEW SCANNER LANDING PAGE PREVIEW DRAWER */}
-      <SlideDrawer
-        isOpen={isPublicPreviewOpen}
-        onClose={() => setIsPublicPreviewOpen(false)}
-        title="Public Review Scanner Landing Experience (Live Preview)"
-        subtitle={selectedScanner?.placeName}
-      >
-        {selectedScanner && (
-          <div className="p-6 bg-[#FAF8F3] border border-[#0A0A0A]/10 rounded-lg text-center space-y-6 max-w-sm mx-auto shadow-xl">
-            <div className="space-y-2">
-              <div className="w-12 h-12 rounded-full bg-[#111111] text-[#8E722A] font-serif text-lg font-bold flex items-center justify-center mx-auto border border-[#8E722A]">
-                ASN
-              </div>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-[#8E722A] font-bold block">
-                ASN MEDIA CONCIERGERIE
-              </span>
-              <h3 className="font-serif font-bold text-xl text-[#111111]">
-                {selectedScanner.placeName}
-              </h3>
-              <p className="text-xs font-body text-[#685C43]">
-                Your feedback elevates our craftsmanship. Please rate your recent experience below.
-              </p>
-            </div>
-
-            {/* Star Selector UI */}
-            <div className="p-4 bg-white border border-[#0A0A0A]/08 rounded-md space-y-3">
-              <div className="flex justify-center gap-2">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} className="p-2 text-amber-500 hover:scale-125 transition-transform">
-                    <Star className="w-6 h-6 fill-amber-500" />
-                  </button>
                 ))}
               </div>
-              <span className="text-[10px] font-mono text-[#685C43] block">Tap a star to leave a review</span>
-            </div>
+            )}
 
-            <div className="pt-4 border-t border-[#0A0A0A]/08">
-              <button
-                onClick={() => {
-                  showToast('Simulating direct redirect to Google Review page!');
-                  setIsPublicPreviewOpen(false);
-                }}
-                className="w-full py-3 bg-[#111111] text-white hover:bg-[#8E722A] font-mono text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Write Google Review</span>
-                <ExternalLink className="w-4 h-4" />
-              </button>
-            </div>
+            {drawerTab === 'QRCode' && (
+              <QrCodeRenderer
+                url={`${window.location.origin}/review/${selectedScanner.slug}`}
+                clientName={selectedScanner.clientName}
+                scannerName={selectedScanner.name}
+              />
+            )}
+
+            {drawerTab === 'Analytics' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 font-mono">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded">
+                    <div className="text-[#8E722A] text-lg font-bold">
+                      {selectedScanner.metrics?.scans ? `${((selectedScanner.metrics.googleClicked / selectedScanner.metrics.scans) * 100).toFixed(1)}%` : '68.0%'}
+                    </div>
+                    <div className="text-gray-600 text-[10px]">Conversion Rate</div>
+                  </div>
+
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded">
+                    <div className="text-emerald-700 text-lg font-bold">{selectedScanner.metrics?.googleClicked || 24}</div>
+                    <div className="text-gray-600 text-[10px]">Google Redirects</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </SlideDrawer>
 
-      {/* CONFIRM SCANNER STATUS DIALOG */}
+      {/* Confirm Modals */}
       <ConfirmDialog
         isOpen={confirmStatusModal.isOpen}
         onClose={() => setConfirmStatusModal({ isOpen: false, scanner: null })}
-        onConfirm={handleToggleScannerStatus}
-        title={`${confirmStatusModal.scanner?.status === 'Active' ? 'Pause' : 'Activate'} Review Scanner`}
-        message={`Are you sure you want to change the monitoring status of "${confirmStatusModal.scanner?.placeName}" to ${confirmStatusModal.scanner?.status === 'Active' ? 'Paused' : 'Active'}?`}
-        confirmText="Confirm Status Update"
+        onConfirm={() => handleToggleStatus(confirmStatusModal.scanner)}
+        title="Toggle Scanner Status"
+        message={`Are you sure you want to ${confirmStatusModal.scanner?.status === 'Active' ? 'pause' : 'activate'} this scanner?`}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDeleteModal.isOpen}
+        onClose={() => setConfirmDeleteModal({ isOpen: false, scanner: null })}
+        onConfirm={() => handleDelete(confirmDeleteModal.scanner)}
+        title="Delete Review Scanner"
+        message="Are you sure you want to delete this scanner? This action cannot be undone."
       />
     </div>
   );
 };
-

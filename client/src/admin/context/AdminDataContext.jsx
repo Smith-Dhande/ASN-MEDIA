@@ -462,42 +462,106 @@ export const AdminDataProvider = ({ children }) => {
 
   // SCANNER HANDLERS
   const addScanner = (newScn) => {
+    const slug = newScn.slug || (newScn.name || newScn.placeName || 'scanner').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+    const scnObj = {
+      id: newScn.id || `scn_${Date.now()}`,
+      clientName: newScn.clientName,
+      name: newScn.name || newScn.placeName || `${newScn.clientName} Review`,
+      placeName: newScn.placeName || newScn.name || `${newScn.clientName} Review`,
+      placeId: newScn.placeId || `ChIJN_${Date.now()}`,
+      slug,
+      googleUrl: newScn.googleUrl || newScn.googleReviewUrl || `https://search.google.com/local/writereview?placeid=${newScn.placeId || 'ChIJN'}`,
+      googleReviewUrl: newScn.googleReviewUrl || newScn.googleUrl || `https://search.google.com/local/writereview?placeid=${newScn.placeId || 'ChIJN'}`,
+      ratingRequired: newScn.ratingRequired !== false,
+      questions: newScn.questions || [
+        {
+          id: 'q1',
+          question: 'What did you like most?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o1', label: 'Food & Quality', value: 'Food & Quality', isActive: true },
+            { id: 'o2', label: 'Customer Service', value: 'Customer Service', isActive: true },
+            { id: 'o3', label: 'Ambience & Vibe', value: 'Ambience & Vibe', isActive: true },
+            { id: 'o4', label: 'Staff Attention', value: 'Staff Attention', isActive: true }
+          ]
+        },
+        {
+          id: 'q2',
+          question: 'What stood out to you?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o5', label: 'Friendly Staff', value: 'Friendly Staff', isActive: true },
+            { id: 'o6', label: 'Quick Service', value: 'Quick Service', isActive: true },
+            { id: 'o7', label: 'Great Presentation', value: 'Great Presentation', isActive: true },
+            { id: 'o8', label: 'Clean Environment', value: 'Clean Environment', isActive: true }
+          ]
+        },
+        {
+          id: 'q3',
+          question: 'How was your overall experience?',
+          type: 'dropdown',
+          required: true,
+          options: [
+            { id: 'o9', label: 'Excellent', value: 'Excellent', isActive: true },
+            { id: 'o10', label: 'Very Good', value: 'Very Good', isActive: true },
+            { id: 'o11', label: 'Good', value: 'Good', isActive: true },
+            { id: 'o12', label: 'Satisfactory', value: 'Satisfactory', isActive: true }
+          ]
+        }
+      ],
+      aiSettings: newScn.aiSettings || { tone: 'Friendly & Professional', length: 'Medium' },
+      avgRating: newScn.avgRating || 4.9,
+      totalReviewsScraped: newScn.totalReviewsScraped || 0,
+      status: newScn.status || 'Active',
+      metrics: newScn.metrics || { scans: 42, formStarted: 35, formSubmitted: 30, reviewsGenerated: 28, googleClicked: 24 }
+    };
+
     setData((prev) => {
-      const scnObj = {
-        id: `scn_${Date.now()}`,
-        clientName: newScn.clientName,
-        placeName: newScn.placeName,
-        placeId: newScn.placeId || `ChIJN_${Date.now()}`,
-        googleUrl: newScn.googleUrl || `https://search.google.com/local/writereview?placeid=${newScn.placeId || 'ChIJN'}`,
-        avgRating: 4.9,
-        totalReviewsScraped: 12,
-        sentimentPctPositive: 95,
-        status: newScn.status || 'Active',
-        lastScanDate: 'Just now',
-        qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=ASN_MEDIA_REVIEW',
-      };
       const updatedScanners = [scnObj, ...(prev.reviewScanners || [])];
       const updated = { ...prev, reviewScanners: updatedScanners };
       return { ...updated, dashboardMetrics: computeMetrics(updated) };
     });
+
+    // Async POST to backend API
+    fetch('http://localhost:5000/api/review-scanners', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(scnObj)
+    }).catch((e) => console.warn('API sync warning:', e.message));
+
+    return scnObj;
   };
 
   const updateScanner = (id, updatedFields) => {
     setData((prev) => {
       const updatedScanners = (prev.reviewScanners || []).map((s) =>
-        s.id === id ? { ...s, ...updatedFields } : s
+        s.id === id || s._id === id ? { ...s, ...updatedFields } : s
       );
       const updated = { ...prev, reviewScanners: updatedScanners };
       return { ...updated, dashboardMetrics: computeMetrics(updated) };
     });
+
+    // Async PATCH to backend API
+    fetch(`http://localhost:5000/api/review-scanners/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedFields)
+    }).catch((e) => console.warn('API sync warning:', e.message));
   };
 
   const deleteScanner = (id) => {
     setData((prev) => {
-      const updatedScanners = (prev.reviewScanners || []).filter((s) => s.id !== id);
+      const updatedScanners = (prev.reviewScanners || []).filter((s) => s.id !== id && s._id !== id);
       const updated = { ...prev, reviewScanners: updatedScanners };
       return { ...updated, dashboardMetrics: computeMetrics(updated) };
     });
+
+    // Async DELETE to backend API
+    fetch(`http://localhost:5000/api/review-scanners/${id}`, {
+      method: 'DELETE'
+    }).catch((e) => console.warn('API sync warning:', e.message));
   };
 
   // STAFF & PERMISSIONS HANDLERS

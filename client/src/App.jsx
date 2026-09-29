@@ -17,6 +17,7 @@ import { Contact } from './pages/Contact';
 import { Insights } from './pages/Insights';
 import { TermsPage } from './pages/TermsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PublicReviewScanner } from './pages/PublicReviewScanner';
 
 // Admin Imports
 import { AdminLayout } from './admin/components/layout/AdminLayout';
@@ -103,6 +104,9 @@ export function App() {
     <Router>
       <ScrollToTop />
       <Routes>
+        {/* PUBLIC REVIEW SCANNER ROUTE (STANDALONE BRANDED EXPERIENCE) */}
+        <Route path="/review/:slug" element={<PublicReviewScanner />} />
+
         {/* PUBLIC WEBSITE ROUTES */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />

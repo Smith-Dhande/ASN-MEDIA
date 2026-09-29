@@ -19,18 +19,18 @@ export const AdminHeader = () => {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2">
+        {/* <div className="hidden sm:flex items-center gap-2">
           <span className="font-display text-lg text-[#111111] font-normal tracking-tight">
             ASN Media
           </span>
           <span className="text-[10px] font-mono tracking-widest text-[#8E722A] uppercase bg-[#F7F5EF] px-2 py-0.5 rounded-xs border border-[#D5C7A5] font-bold">
             ADMIN PANEL
           </span>
-        </div>
+        </div> */}
       </div>
 
       {/* Center: Quick Search Trigger */}
-      <div className="flex-1 max-w-xs sm:max-w-md mx-4">
+      {/* <div className="flex-1 max-w-xs sm:max-w-md mx-4">
         <button
           onClick={() => setIsSearchOpen(true)}
           className="w-full flex items-center justify-between px-3 py-1.5 bg-[#F7F5EF] hover:bg-white text-[#221C11] rounded-xs border border-[#D5C7A5] text-xs font-mono transition-all focus:outline-none shadow-2xs"
@@ -44,7 +44,7 @@ export const AdminHeader = () => {
             Cmd+K
           </kbd>
         </button>
-      </div>
+      </div> */}
 
       {/* Right Actions: Public site link, Notifications, User session profile */}
       <div className="flex items-center gap-3">
