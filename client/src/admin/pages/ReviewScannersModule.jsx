@@ -6,7 +6,6 @@ import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
-import { AdminModal } from '../components/ui/AdminModal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
@@ -170,10 +169,18 @@ export const ReviewScannersModule = () => {
     }, 1000);
   };
 
+  const isCreateScannerMode = location.pathname.endsWith('/scanners/create') || isCreateModalOpen;
+
+  const handleOpenCreateScanner = () => {
+    setIsCreateModalOpen(true);
+    navigate('/admin/scanners/create');
+  };
+
   const handleCreateSubmit = (e) => {
     e.preventDefault();
     addScanner(createForm);
     setIsCreateModalOpen(false);
+    navigate('/admin/scanners');
     showToast('New Review Scanner deployed successfully!');
   };
 
@@ -281,6 +288,90 @@ export const ReviewScannersModule = () => {
     },
   ];
 
+  if (isCreateScannerMode) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        {feedback.show && (
+          <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
+            <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#0A0A0A]/08 gap-3">
+          <div>
+            <div className="text-xs font-mono text-[#685C43] mb-1">
+              <span>Review Scanners</span> / <span className="font-bold text-[#111111]">Deploy Scanner</span>
+            </div>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              Deploy New Google Review Scanner Monitor
+            </h2>
+          </div>
+
+          <button
+            onClick={() => { setIsCreateModalOpen(false); navigate('/admin/scanners'); }}
+            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded-xs transition-colors"
+          >
+            ← Back to Scanners
+          </button>
+        </div>
+
+        <form onSubmit={handleCreateSubmit} className="space-y-6">
+          <AdminCard title="01. Client & Business Unit Identity" className="space-y-4">
+            <FormSelect
+              label="Assigned Client"
+              value={createForm.clientName}
+              onChange={(e) => setCreateForm({ ...createForm, clientName: e.target.value })}
+              options={clients.map((c) => c.name)}
+            />
+
+            <FormInput
+              label="Google Place Name / Business Unit"
+              value={createForm.placeName}
+              onChange={(e) => setCreateForm({ ...createForm, placeName: e.target.value })}
+              placeholder="e.g. Aura Flagship Salon & Spa - Bandra"
+              required
+            />
+          </AdminCard>
+
+          <AdminCard title="02. Google Integration Parameters" className="space-y-4">
+            <FormInput
+              label="Google Place ID"
+              value={createForm.placeId}
+              onChange={(e) => setCreateForm({ ...createForm, placeId: e.target.value })}
+              placeholder="ChIJN1t_t_x55zsR9999..."
+              required
+            />
+
+            <FormInput
+              label="Target Google Destination Review URL"
+              value={createForm.googleUrl}
+              onChange={(e) => setCreateForm({ ...createForm, googleUrl: e.target.value })}
+              placeholder="https://search.google.com/local/writereview?placeid=..."
+              required
+            />
+          </AdminCard>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#0A0A0A]/10">
+            <button
+              type="button"
+              onClick={() => { setIsCreateModalOpen(false); navigate('/admin/scanners'); }}
+              className="px-5 py-2.5 text-xs font-mono text-[#685C43] hover:text-[#111111]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors"
+            >
+              Deploy Review Scanner
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 font-body">
       {/* Toast Feedback */}
@@ -337,7 +428,7 @@ export const ReviewScannersModule = () => {
         onFilterChange={setStatusFilter}
         actions={
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreateScanner}
             className="px-3.5 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -662,13 +753,12 @@ export const ReviewScannersModule = () => {
         )}
       </SlideDrawer>
 
-      {/* ========================================================= */}
-      {/* PUBLIC REVIEW SCANNER LANDING PAGE PREVIEW MODAL          */}
-      {/* ========================================================= */}
-      <AdminModal
+      {/* PUBLIC REVIEW SCANNER LANDING PAGE PREVIEW DRAWER */}
+      <SlideDrawer
         isOpen={isPublicPreviewOpen}
         onClose={() => setIsPublicPreviewOpen(false)}
         title="Public Review Scanner Landing Experience (Live Preview)"
+        subtitle={selectedScanner?.placeName}
       >
         {selectedScanner && (
           <div className="p-6 bg-[#FAF8F3] border border-[#0A0A0A]/10 rounded-lg text-center space-y-6 max-w-sm mx-auto shadow-xl">
@@ -705,7 +795,7 @@ export const ReviewScannersModule = () => {
                   showToast('Simulating direct redirect to Google Review page!');
                   setIsPublicPreviewOpen(false);
                 }}
-                className="w-full py-3 bg-[#111111] text-white hover:bg-[#8E722A] font-mono text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#111111] text-white hover:bg-[#8E722A] font-mono text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Write Google Review</span>
                 <ExternalLink className="w-4 h-4" />
@@ -713,63 +803,7 @@ export const ReviewScannersModule = () => {
             </div>
           </div>
         )}
-      </AdminModal>
-
-      {/* CREATE SCANNER MODAL */}
-      <AdminModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Deploy New Review Scanner Monitor"
-      >
-        <form onSubmit={handleCreateSubmit} className="space-y-4">
-          <FormSelect
-            label="Assigned Client"
-            value={createForm.clientName}
-            onChange={(e) => setCreateForm({ ...createForm, clientName: e.target.value })}
-            options={clients.map((c) => c.name)}
-          />
-
-          <FormInput
-            label="Google Place Name / Business Unit"
-            value={createForm.placeName}
-            onChange={(e) => setCreateForm({ ...createForm, placeName: e.target.value })}
-            placeholder="e.g. Aura Flagship Salon - Worli"
-            required
-          />
-
-          <FormInput
-            label="Google Place ID"
-            value={createForm.placeId}
-            onChange={(e) => setCreateForm({ ...createForm, placeId: e.target.value })}
-            placeholder="ChIJN..."
-            required
-          />
-
-          <FormInput
-            label="Target Google Destination URL"
-            value={createForm.googleUrl}
-            onChange={(e) => setCreateForm({ ...createForm, googleUrl: e.target.value })}
-            placeholder="https://search.google.com/local/writereview?placeid=..."
-            required
-          />
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white hover:bg-[#725B20] rounded-xs transition-colors"
-            >
-              Deploy Scanner
-            </button>
-          </div>
-        </form>
-      </AdminModal>
+      </SlideDrawer>
 
       {/* CONFIRM SCANNER STATUS DIALOG */}
       <ConfirmDialog

@@ -9,7 +9,6 @@ import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { AdminModal } from '../components/ui/AdminModal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { KpiCard } from '../components/ui/KpiCard';
 import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
@@ -374,7 +373,148 @@ export const ClientsModule = () => {
       {/* ========================================================= */}
       {/* MODE 1: DEDICATED FULL-PAGE CLIENT WORKSPACE (/admin/clients/:id) */}
       {/* ========================================================= */}
-      {isDetailMode ? (
+      {isEditModalOpen && currentClient ? (
+        <div className="w-full space-y-6 font-body">
+          <div className="flex items-center justify-between pb-3 border-b border-[#0A0A0A]/08">
+            <div>
+              <span className="font-mono text-[9px] font-bold text-[#8E722A] uppercase tracking-widest block">
+                CLIENT MANAGEMENT
+              </span>
+              <h2 className="font-display text-2xl font-normal text-[#111111]">
+                Edit Profile: {currentClient.name}
+              </h2>
+            </div>
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="text-xs font-mono text-[#685C43] hover:text-[#111111] cursor-pointer"
+            >
+              ← Back to Client Workspace
+            </button>
+          </div>
+
+          <form onSubmit={handleFormSubmit} className="space-y-6">
+            <AdminCard title="Client & Contact Information" className="p-6">
+              <div className="space-y-4">
+                <FormInput
+                  label="Client / Brand Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Primary Contact Person"
+                    value={formData.contactName}
+                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                    required
+                  />
+                  <FormInput
+                    label="Company Entity Name"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Email Address"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                  <FormInput
+                    label="Phone Number"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <FormInput
+                  label="Official Website URL"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                />
+              </div>
+            </AdminCard>
+
+            <AdminCard title="Contract & Package Assignment" className="p-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormSelect
+                    label="Account Status"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    options={['Active', 'Pending', 'Completed', 'Archived']}
+                  />
+                  <FormInput
+                    label="Monthly Retainer ($ USD)"
+                    type="number"
+                    value={formData.monthlyRetainer}
+                    onChange={(e) => setFormData({ ...formData, monthlyRetainer: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormSelect
+                    label="Assigned Retainer Package"
+                    value={formData.packageAssigned}
+                    onChange={(e) => setFormData({ ...formData, packageAssigned: e.target.value })}
+                    options={[
+                      'Social Media Retainer (Tier A)',
+                      'Social Media Retainer (Tier B)',
+                      'Video Production & Retainer',
+                      'Content Creation Suite',
+                      'Brand Strategy & Launch Package',
+                    ]}
+                  />
+                  <FormSelect
+                    label="Account Manager"
+                    value={formData.accountManager}
+                    onChange={(e) => setFormData({ ...formData, accountManager: e.target.value })}
+                    options={['Sarah Jenkins', 'Alex Rivera', 'Priya Sharma', 'David Kim']}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Contract Start Date"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  />
+                  <FormInput
+                    label="Contract Expiry Date"
+                    type="date"
+                    value={formData.expiryDate}
+                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  />
+                </div>
+              </div>
+            </AdminCard>
+
+            <div className="pt-4 border-t border-[#0A0A0A]/08 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-4 py-2 text-xs font-mono text-[#685C43] hover:text-[#111111] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] rounded-lg hover:bg-[#8E722A] transition-colors cursor-pointer"
+              >
+                Save Profile Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : isDetailMode ? (
         !currentClient ? (
           /* 404 Client Not Found State */
           <div className="max-w-4xl mx-auto py-12">
@@ -456,22 +596,16 @@ export const ClientsModule = () => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setQuickProjectForm((prev) => ({ ...prev, title: `${currentClient.name} - New Campaign` }));
-                      setIsCreateProjectOpen(true);
-                    }}
-                    className="px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F3] text-[#111111] border border-[#0A0A0A]/14 hover:bg-[#8E722A] hover:text-white rounded-md transition-colors flex items-center gap-1.5"
+                    onClick={() => navigate('/admin/projects/create')}
+                    className="px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F3] text-[#111111] border border-[#0A0A0A]/14 hover:bg-[#8E722A] hover:text-white rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>+ Project</span>
                   </button>
 
                   <button
-                    onClick={() => {
-                      setQuickScannerForm((prev) => ({ ...prev, placeName: `${currentClient.company} Google Reviews` }));
-                      setIsDeployScannerOpen(true);
-                    }}
-                    className="px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F3] text-[#111111] border border-[#0A0A0A]/14 hover:bg-[#8E722A] hover:text-white rounded-md transition-colors flex items-center gap-1.5"
+                    onClick={() => navigate('/admin/scanners/create')}
+                    className="px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F3] text-[#111111] border border-[#0A0A0A]/14 hover:bg-[#8E722A] hover:text-white rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <Star className="w-3.5 h-3.5 text-amber-600" />
                     <span>+ Scanner</span>
@@ -1042,7 +1176,7 @@ export const ClientsModule = () => {
         /* ========================================================= */
         isAddMode ? (
           /* Add Client Form Screen */
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="w-full space-y-6 font-body">
             <div className="flex items-center justify-between pb-3 border-b border-[#0A0A0A]/08">
               <div>
                 <span className="font-mono text-[9px] font-bold text-[#8E722A] uppercase tracking-widest block">
@@ -1264,258 +1398,6 @@ export const ClientsModule = () => {
             </AdminCard>
           </div>
         )
-      )}
-
-      {/* Edit Client Modal */}
-      {isEditModalOpen && (
-        <AdminModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          title={`Edit Profile: ${currentClient?.name || 'Client'}`}
-          maxWidth="max-w-xl"
-        >
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            <FormInput
-              label="Client / Brand Name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Contact Person"
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Company Entity"
-                value={formData.company}
-                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Phone Number"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormSelect
-                label="Account Status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                options={['Active', 'Pending', 'Completed', 'Archived']}
-              />
-              <FormInput
-                label="Monthly Retainer ($ USD)"
-                type="number"
-                value={formData.monthlyRetainer}
-                onChange={(e) => setFormData({ ...formData, monthlyRetainer: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-              <button
-                type="button"
-                onClick={() => setIsEditModalOpen(false)}
-                className="px-4 py-2 text-xs font-mono text-[#685C43]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white rounded-md hover:bg-[#725B20]"
-              >
-                Save Client Changes
-              </button>
-            </div>
-          </form>
-        </AdminModal>
-      )}
-
-      {/* Quick Project Creation Modal */}
-      {isCreateProjectOpen && (
-        <AdminModal
-          isOpen={isCreateProjectOpen}
-          onClose={() => setIsCreateProjectOpen(false)}
-          title={`Create Project for ${currentClient?.name}`}
-          maxWidth="max-w-lg"
-        >
-          <form onSubmit={handleQuickProjectSubmit} className="space-y-4">
-            <FormInput
-              label="Project Title"
-              value={quickProjectForm.title}
-              onChange={(e) => setQuickProjectForm({ ...quickProjectForm, title: e.target.value })}
-              placeholder="e.g. Q4 Brand Launch Campaign"
-              required
-            />
-            <FormSelect
-              label="Primary Service"
-              value={quickProjectForm.serviceName}
-              onChange={(e) => setQuickProjectForm({ ...quickProjectForm, serviceName: e.target.value })}
-              options={[
-                'Social Media Management',
-                'Video Production',
-                'Content Creation Suite',
-                'Brand Strategy',
-              ]}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Start Date"
-                type="date"
-                value={quickProjectForm.startDate}
-                onChange={(e) => setQuickProjectForm({ ...quickProjectForm, startDate: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Due Date"
-                type="date"
-                value={quickProjectForm.dueDate}
-                onChange={(e) => setQuickProjectForm({ ...quickProjectForm, dueDate: e.target.value })}
-                required
-              />
-            </div>
-            <FormSelect
-              label="Lead Staff Assignee"
-              value={quickProjectForm.leadStaff}
-              onChange={(e) => setQuickProjectForm({ ...quickProjectForm, leadStaff: e.target.value })}
-              options={['Sarah Jenkins', 'Alex Rivera', 'Priya Sharma', 'David Kim']}
-            />
-            <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-              <button
-                type="button"
-                onClick={() => setIsCreateProjectOpen(false)}
-                className="px-4 py-2 text-xs font-mono text-[#685C43]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] rounded-md hover:bg-[#8E722A]"
-              >
-                Create Project
-              </button>
-            </div>
-          </form>
-        </AdminModal>
-      )}
-
-      {/* Quick Deploy Review Scanner Modal */}
-      {isDeployScannerOpen && (
-        <AdminModal
-          isOpen={isDeployScannerOpen}
-          onClose={() => setIsDeployScannerOpen(false)}
-          title={`Deploy Review Scanner for ${currentClient?.name}`}
-          maxWidth="max-w-lg"
-        >
-          <form onSubmit={handleQuickScannerSubmit} className="space-y-4">
-            <FormInput
-              label="Google Place Name"
-              value={quickScannerForm.placeName}
-              onChange={(e) => setQuickScannerForm({ ...quickScannerForm, placeName: e.target.value })}
-              required
-            />
-            <FormInput
-              label="Google Review Target URL"
-              type="url"
-              value={quickScannerForm.googleReviewUrl}
-              onChange={(e) => setQuickScannerForm({ ...quickScannerForm, googleReviewUrl: e.target.value })}
-              required
-            />
-            <FormInput
-              label="Business Address / Location"
-              value={quickScannerForm.address}
-              onChange={(e) => setQuickScannerForm({ ...quickScannerForm, address: e.target.value })}
-              required
-            />
-            <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-              <button
-                type="button"
-                onClick={() => setIsDeployScannerOpen(false)}
-                className="px-4 py-2 text-xs font-mono text-[#685C43]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] rounded-md hover:bg-[#8E722A]"
-              >
-                Deploy Scanner
-              </button>
-            </div>
-          </form>
-        </AdminModal>
-      )}
-
-      {/* Quick Record Payment Modal */}
-      {isRecordPaymentOpen && (
-        <AdminModal
-          isOpen={isRecordPaymentOpen}
-          onClose={() => setIsRecordPaymentOpen(false)}
-          title={`Record Payment for ${currentClient?.name}`}
-          maxWidth="max-w-md"
-        >
-          <form onSubmit={handleQuickPaymentSubmit} className="space-y-4">
-            <FormInput
-              label="Invoice Number"
-              value={quickPaymentForm.invoiceNumber}
-              onChange={(e) => setQuickPaymentForm({ ...quickPaymentForm, invoiceNumber: e.target.value })}
-              required
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Invoice Amount ($ USD)"
-                type="number"
-                value={quickPaymentForm.amount}
-                onChange={(e) => setQuickPaymentForm({ ...quickPaymentForm, amount: e.target.value })}
-                required
-              />
-              <FormSelect
-                label="Payment Status"
-                value={quickPaymentForm.status}
-                onChange={(e) => setQuickPaymentForm({ ...quickPaymentForm, status: e.target.value })}
-                options={['Paid', 'Pending', 'Overdue']}
-              />
-            </div>
-            <FormSelect
-              label="Payment Method"
-              value={quickPaymentForm.method}
-              onChange={(e) => setQuickPaymentForm({ ...quickPaymentForm, method: e.target.value })}
-              options={['Bank Transfer', 'Credit Card', 'UPI', 'PayPal', 'Check']}
-            />
-            <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-              <button
-                type="button"
-                onClick={() => setIsRecordPaymentOpen(false)}
-                className="px-4 py-2 text-xs font-mono text-[#685C43]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] rounded-md hover:bg-[#8E722A]"
-              >
-                Save Payment Record
-              </button>
-            </div>
-          </form>
-        </AdminModal>
       )}
 
       {/* Archive Confirmation Dialog */}

@@ -6,7 +6,6 @@ import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SlideDrawer } from '../components/ui/SlideDrawer';
 import { AdminCard } from '../components/ui/AdminCard';
-import { AdminModal } from '../components/ui/AdminModal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
@@ -38,6 +37,7 @@ export const PaymentsModule = () => {
   } = useAdminData();
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -57,6 +57,12 @@ export const PaymentsModule = () => {
   // Toast feedback
   const [feedback, setFeedback] = useState({ show: false, message: '', type: 'success' });
 
+  // Determine sub-tab route & form modes
+  const isOutstanding = location.pathname.includes('/outstanding');
+  const isDue = location.pathname.includes('/due');
+  const isCreateMode = location.pathname.endsWith('/payments/create') || isRecordModalOpen;
+  const isEditMode = location.pathname.includes('/payments/edit/') || isEditModalOpen;
+
   // Form State for Recording Payment / Creating Invoice
   const [paymentForm, setPaymentForm] = useState({
     invoiceNumber: `INV-2026-09${payments.length + 10}`,
@@ -70,10 +76,6 @@ export const PaymentsModule = () => {
     status: 'Paid',
     notes: 'Standard retainer invoice',
   });
-
-  // Determine sub-tab route
-  const isOutstanding = location.pathname.includes('/outstanding');
-  const isDue = location.pathname.includes('/due');
 
   useEffect(() => {
     setCurrentPage(1);
@@ -161,6 +163,7 @@ export const PaymentsModule = () => {
       notes: 'Standard retainer invoice',
     });
     setIsRecordModalOpen(true);
+    navigate('/admin/payments/create');
   };
 
   const handleRecordSubmit = (e) => {
@@ -175,6 +178,7 @@ export const PaymentsModule = () => {
     });
 
     setIsRecordModalOpen(false);
+    navigate('/admin/payments');
     showToast('Payment record added to ledger!');
   };
 
@@ -193,6 +197,7 @@ export const PaymentsModule = () => {
       notes: pay.notes || '',
     });
     setIsEditModalOpen(true);
+    navigate(`/admin/payments/edit/${pay.id}`);
   };
 
   const handleEditSubmit = (e) => {
@@ -208,6 +213,7 @@ export const PaymentsModule = () => {
     updatePayment(selectedInvoice.id, updatedObj);
     setSelectedInvoice((prev) => ({ ...prev, ...updatedObj }));
     setIsEditModalOpen(false);
+    navigate('/admin/payments');
     showToast('Payment record updated.');
   };
 
@@ -306,8 +312,146 @@ export const PaymentsModule = () => {
     },
   ];
 
+  // Full workspace form view when recording or editing payment
+  if (isCreateMode || isEditMode) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        {feedback.show && (
+          <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
+            <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#0A0A0A]/08 gap-3">
+          <div>
+            <div className="text-xs font-mono text-[#685C43] mb-1">
+              <span>Payments & Invoicing</span> / <span className="font-bold text-[#111111]">{isEditMode ? 'Edit Payment Entry' : 'Record Payment / Invoice'}</span>
+            </div>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              {isEditMode ? `Edit Payment Entry: ${paymentForm.invoiceNumber}` : 'Record New Invoice or Retainer Settlement'}
+            </h2>
+          </div>
+
+          <button
+            onClick={() => { setIsRecordModalOpen(false); setIsEditModalOpen(false); navigate('/admin/payments'); }}
+            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded-xs transition-colors"
+          >
+            ← Back to Payments Ledger
+          </button>
+        </div>
+
+        <form onSubmit={isEditMode ? handleEditSubmit : handleRecordSubmit} className="space-y-6">
+          <AdminCard title="01. Invoice & Client Details" className="space-y-4">
+            <FormInput
+              label="Invoice Reference #"
+              value={paymentForm.invoiceNumber}
+              onChange={(e) => setPaymentForm({ ...paymentForm, invoiceNumber: e.target.value })}
+              required
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Target Client"
+                value={paymentForm.clientName}
+                onChange={(e) => setPaymentForm({ ...paymentForm, clientName: e.target.value })}
+                options={clients.map((c) => c.name)}
+              />
+              <FormSelect
+                label="Associated Service Package"
+                value={paymentForm.packageName}
+                onChange={(e) => setPaymentForm({ ...paymentForm, packageName: e.target.value })}
+                options={packages.map((p) => p.name)}
+              />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="02. Settlement Amounts & Method" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormInput
+                label="Total Package Value ($ USD)"
+                type="number"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                required
+              />
+              <FormInput
+                label="Amount Received ($ USD)"
+                type="number"
+                value={paymentForm.amountReceived}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amountReceived: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Payment Method"
+                value={paymentForm.method}
+                onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                options={['Bank Transfer', 'Wire Transfer', 'Cheque / Wire', 'Credit Card']}
+              />
+              <FormSelect
+                label="Ledger Status"
+                value={paymentForm.status}
+                onChange={(e) => setPaymentForm({ ...paymentForm, status: e.target.value })}
+                options={['Paid', 'Partially Paid', 'Pending', 'Overdue']}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormInput
+                label="Transaction / Payment Date"
+                type="date"
+                value={paymentForm.date}
+                onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                required
+              />
+              <FormInput
+                label="Invoice Due Date"
+                type="date"
+                value={paymentForm.dueDate}
+                onChange={(e) => setPaymentForm({ ...paymentForm, dueDate: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-mono font-bold text-[#111111] uppercase tracking-wider block mb-1">
+                Internal Ledger Notes
+              </label>
+              <textarea
+                rows={3}
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                placeholder="Log internal remittance references, wire tracking IDs, or invoice terms..."
+                className="w-full px-3 py-2 text-xs font-body border border-[#0A0A0A]/14 rounded-xs focus:outline-none focus:border-[#8E722A]"
+              />
+            </div>
+          </AdminCard>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#0A0A0A]/10">
+            <button
+              type="button"
+              onClick={() => { setIsRecordModalOpen(false); setIsEditModalOpen(false); navigate('/admin/payments'); }}
+              className="px-5 py-2.5 text-xs font-mono text-[#685C43] hover:text-[#111111]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors"
+            >
+              {isEditMode ? 'Update Payment Record' : 'Save Payment Record'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 font-body">
+    <div className="w-full space-y-6 font-body">
       {/* Toast Feedback */}
       {feedback.show && (
         <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A] animate-fade-in">
@@ -519,184 +663,6 @@ export const PaymentsModule = () => {
           </div>
         )}
       </SlideDrawer>
-
-      {/* ========================================================= */}
-      {/* MODALS: CREATE & EDIT PAYMENT                             */}
-      {/* ========================================================= */}
-      <AdminModal
-        isOpen={isRecordModalOpen}
-        onClose={() => setIsRecordModalOpen(false)}
-        title="Record Payment / Create Invoice"
-      >
-        <form onSubmit={handleRecordSubmit} className="space-y-4">
-          <FormInput
-            label="Invoice Reference #"
-            value={paymentForm.invoiceNumber}
-            onChange={(e) => setPaymentForm({ ...paymentForm, invoiceNumber: e.target.value })}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Client"
-              value={paymentForm.clientName}
-              onChange={(e) => setPaymentForm({ ...paymentForm, clientName: e.target.value })}
-              options={clients.map((c) => c.name)}
-            />
-            <FormSelect
-              label="Associated Package"
-              value={paymentForm.packageName}
-              onChange={(e) => setPaymentForm({ ...paymentForm, packageName: e.target.value })}
-              options={packages.map((p) => p.name)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput
-              label="Total Package Value ($ USD)"
-              type="number"
-              value={paymentForm.amount}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-              required
-            />
-            <FormInput
-              label="Amount Received ($ USD)"
-              type="number"
-              value={paymentForm.amountReceived}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amountReceived: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Payment Method"
-              value={paymentForm.method}
-              onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-              options={['Bank Transfer', 'Wire Transfer', 'Cheque / Wire', 'Credit Card']}
-            />
-            <FormSelect
-              label="Payment Status"
-              value={paymentForm.status}
-              onChange={(e) => setPaymentForm({ ...paymentForm, status: e.target.value })}
-              options={['Paid', 'Partially Paid', 'Pending', 'Overdue']}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput
-              label="Payment Date"
-              type="date"
-              value={paymentForm.date}
-              onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-              required
-            />
-            <FormInput
-              label="Due Date"
-              type="date"
-              value={paymentForm.dueDate}
-              onChange={(e) => setPaymentForm({ ...paymentForm, dueDate: e.target.value })}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-mono font-bold text-[#111111] uppercase tracking-wider block mb-1">
-              Internal Ledger Notes
-            </label>
-            <textarea
-              rows={2}
-              value={paymentForm.notes}
-              onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-              className="w-full px-3 py-2 text-xs font-body border border-[#0A0A0A]/14 rounded-xs focus:outline-none focus:border-[#8E722A]"
-            />
-          </div>
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsRecordModalOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] hover:bg-[#725B20] text-white rounded-xs transition-colors"
-            >
-              Save Payment Record
-            </button>
-          </div>
-        </form>
-      </AdminModal>
-
-      <AdminModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Payment Entry"
-      >
-        <form onSubmit={handleEditSubmit} className="space-y-4">
-          <FormInput
-            label="Invoice Reference #"
-            value={paymentForm.invoiceNumber}
-            onChange={(e) => setPaymentForm({ ...paymentForm, invoiceNumber: e.target.value })}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput
-              label="Package Value ($)"
-              type="number"
-              value={paymentForm.amount}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-            />
-            <FormInput
-              label="Amount Received ($)"
-              type="number"
-              value={paymentForm.amountReceived}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amountReceived: e.target.value })}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Status"
-              value={paymentForm.status}
-              onChange={(e) => setPaymentForm({ ...paymentForm, status: e.target.value })}
-              options={['Paid', 'Partially Paid', 'Pending', 'Overdue']}
-            />
-            <FormSelect
-              label="Method"
-              value={paymentForm.method}
-              onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-              options={['Bank Transfer', 'Wire Transfer', 'Cheque / Wire', 'Credit Card']}
-            />
-          </div>
-
-          <FormInput
-            label="Due Date"
-            type="date"
-            value={paymentForm.dueDate}
-            onChange={(e) => setPaymentForm({ ...paymentForm, dueDate: e.target.value })}
-          />
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] hover:bg-[#725B20] text-white rounded-xs transition-colors"
-            >
-              Update Payment Record
-            </button>
-          </div>
-        </form>
-      </AdminModal>
 
       {/* CONFIRM DELETE DIALOG */}
       <ConfirmDialog

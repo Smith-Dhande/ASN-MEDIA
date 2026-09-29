@@ -9,7 +9,6 @@ import { AdminCard } from '../components/ui/AdminCard';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
 import { Pagination } from '../components/ui/Pagination';
-import { AdminModal } from '../components/ui/AdminModal';
 import { KpiCard } from '../components/ui/KpiCard';
 import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import { Inbox, Mail, Phone, Building, Calendar, DollarSign, ArrowRight, UserCheck, Plus, CheckCircle2, UserPlus, Clock } from 'lucide-react';
@@ -215,6 +214,199 @@ export const EnquiriesModule = () => {
     },
   ];
 
+  // Render Lead Conversion Workspace
+  if (isConvertModalOpen) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        <div className="flex items-center justify-between pb-3 border-b border-[#0A0A0A]/08">
+          <div>
+            <span className="font-mono text-[9px] font-bold text-[#8E722A] uppercase tracking-widest block">
+              LEAD CONVERSION WORKFLOW
+            </span>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              Convert Lead to Active Client Account
+            </h2>
+          </div>
+          <button
+            onClick={() => setIsConvertModalOpen(false)}
+            className="text-xs font-mono text-[#685C43] hover:text-[#111111] cursor-pointer"
+          >
+            ← Back to Enquiries
+          </button>
+        </div>
+
+        <p className="text-xs text-[#685C43]">
+          Review and pre-fill client account parameters for <strong className="text-[#111111]">{selectedEnquiry?.name}</strong>.
+        </p>
+
+        <form onSubmit={handleConvertSubmit} className="space-y-6">
+          <AdminCard title="Client & Contact Information" className="p-6">
+            <div className="space-y-4">
+              <FormInput
+                label="Client / Brand Name"
+                value={convertForm.name}
+                onChange={(e) => setConvertForm({ ...convertForm, name: e.target.value })}
+                required
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormInput
+                  label="Primary Contact Person"
+                  value={convertForm.contactName}
+                  onChange={(e) => setConvertForm({ ...convertForm, contactName: e.target.value })}
+                  required
+                />
+                <FormInput
+                  label="Company Entity Name"
+                  value={convertForm.company}
+                  onChange={(e) => setConvertForm({ ...convertForm, company: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormInput
+                  label="Email Address"
+                  type="email"
+                  value={convertForm.email}
+                  onChange={(e) => setConvertForm({ ...convertForm, email: e.target.value })}
+                  required
+                />
+                <FormInput
+                  label="Phone Number"
+                  value={convertForm.phone}
+                  onChange={(e) => setConvertForm({ ...convertForm, phone: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+          </AdminCard>
+
+          <AdminCard title="Package Assignment & Billing" className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Assigned Retainer Package"
+                value={convertForm.packageAssigned}
+                onChange={(e) => setConvertForm({ ...convertForm, packageAssigned: e.target.value })}
+                options={[
+                  'Social Media Retainer (Tier A)',
+                  'Social Media Retainer (Tier B)',
+                  'Video Production & Retainer',
+                  'Content Creation Suite',
+                  'Brand Strategy & Launch Package',
+                ]}
+              />
+              <FormInput
+                label="Monthly Retainer Fee ($ USD)"
+                type="number"
+                value={convertForm.monthlyRetainer}
+                onChange={(e) => setConvertForm({ ...convertForm, monthlyRetainer: e.target.value })}
+                required
+              />
+            </div>
+          </AdminCard>
+
+          <div className="pt-4 border-t border-[#0A0A0A]/08 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsConvertModalOpen(false)}
+              className="px-4 py-2 text-xs font-mono text-[#685C43] hover:text-[#111111] cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] rounded-lg hover:bg-[#8E722A] transition-colors cursor-pointer"
+            >
+              Confirm Client Conversion
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // Render Log Follow-up Workspace
+  if (isFollowUpModalOpen) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        <div className="flex items-center justify-between pb-3 border-b border-[#0A0A0A]/08">
+          <div>
+            <span className="font-mono text-[9px] font-bold text-[#8E722A] uppercase tracking-widest block">
+              TOUCHPOINT AUDIT LOG
+            </span>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              Log Lead Follow-up Activity for {selectedEnquiry?.name}
+            </h2>
+          </div>
+          <button
+            onClick={() => setIsFollowUpModalOpen(false)}
+            className="text-xs font-mono text-[#685C43] hover:text-[#111111] cursor-pointer"
+          >
+            ← Back to Enquiries
+          </button>
+        </div>
+
+        <AdminCard title="Follow-up Details" className="p-6">
+          <form onSubmit={handleFollowUpSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormInput
+                label="Follow-up Date"
+                type="date"
+                value={followUpForm.date}
+                onChange={(e) => setFollowUpForm({ ...followUpForm, date: e.target.value })}
+                required
+              />
+              <FormSelect
+                label="Staff Member"
+                value={followUpForm.staff}
+                onChange={(e) => setFollowUpForm({ ...followUpForm, staff: e.target.value })}
+                options={['Sarah Jenkins', 'Vikramaditya Sharma', 'Rohan Verma', 'Ananya Sen']}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-mono font-semibold uppercase tracking-wider text-[#0A0A0A]">
+                Follow-up Notes & Discussion <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                rows={4}
+                value={followUpForm.notes}
+                onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })}
+                placeholder="Log discussion points, proposal updates, or next steps..."
+                required
+                className="px-3.5 py-2.5 bg-[#F7F5EF]/50 text-xs font-body text-[#0A0A0A] rounded-sm border border-[#0A0A0A]/14 focus:outline-none focus:border-[#C8A13A]"
+              />
+            </div>
+
+            <FormSelect
+              label="Outcome / Status"
+              value={followUpForm.outcome}
+              onChange={(e) => setFollowUpForm({ ...followUpForm, outcome: e.target.value })}
+              options={['Pending Response', 'Proposal Sent', 'Meeting Scheduled', 'Converted', 'Closed / Lost']}
+            />
+
+            <div className="pt-4 flex justify-end gap-3 border-t border-[#0A0A0A]/10">
+              <button
+                type="button"
+                onClick={() => setIsFollowUpModalOpen(false)}
+                className="px-4 py-2 text-xs font-mono text-[#685C43] hover:text-[#111111] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white rounded-lg hover:bg-[#725B20] transition-colors cursor-pointer"
+              >
+                Save Follow-up Entry
+              </button>
+            </div>
+          </form>
+        </AdminCard>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 font-body">
       {toastMessage && (
@@ -417,164 +609,8 @@ export const EnquiriesModule = () => {
           </div>
         )}
       </SlideDrawer>
-
-      {/* Convert Lead to Client Modal */}
-      {isConvertModalOpen && (
-        <AdminModal
-          isOpen={isConvertModalOpen}
-          onClose={() => setIsConvertModalOpen(false)}
-          title="Convert Lead to Active Client Account"
-          maxWidth="max-w-xl"
-        >
-          <form onSubmit={handleConvertSubmit} className="space-y-4">
-            <p className="text-xs text-[#685C43] font-body">
-              Review and pre-fill client account parameters for <strong className="text-[#111111]">{selectedEnquiry?.name}</strong>.
-            </p>
-
-            <FormInput
-              label="Client / Brand Name"
-              value={convertForm.name}
-              onChange={(e) => setConvertForm({ ...convertForm, name: e.target.value })}
-              required
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Primary Contact Person"
-                value={convertForm.contactName}
-                onChange={(e) => setConvertForm({ ...convertForm, contactName: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Company Entity Name"
-                value={convertForm.company}
-                onChange={(e) => setConvertForm({ ...convertForm, company: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Email Address"
-                type="email"
-                value={convertForm.email}
-                onChange={(e) => setConvertForm({ ...convertForm, email: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Phone Number"
-                value={convertForm.phone}
-                onChange={(e) => setConvertForm({ ...convertForm, phone: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormSelect
-                label="Assigned Retainer Package"
-                value={convertForm.packageAssigned}
-                onChange={(e) => setConvertForm({ ...convertForm, packageAssigned: e.target.value })}
-                options={[
-                  'Social Media Retainer (Tier A)',
-                  'Social Media Retainer (Tier B)',
-                  'Video Production & Retainer',
-                  'Content Creation Suite',
-                  'Brand Strategy & Launch Package',
-                ]}
-              />
-              <FormInput
-                label="Monthly Retainer Fee ($ USD)"
-                type="number"
-                value={convertForm.monthlyRetainer}
-                onChange={(e) => setConvertForm({ ...convertForm, monthlyRetainer: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-              <button
-                type="button"
-                onClick={() => setIsConvertModalOpen(false)}
-                className="px-4 py-2 text-xs font-mono text-[#685C43]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] rounded-md hover:bg-[#8E722A]"
-              >
-                Confirm Client Conversion
-              </button>
-            </div>
-          </form>
-        </AdminModal>
-      )}
-
-      {/* Log Follow-up Activity Modal */}
-      {isFollowUpModalOpen && (
-        <AdminModal
-          isOpen={isFollowUpModalOpen}
-          onClose={() => setIsFollowUpModalOpen(false)}
-          title="Log Lead Follow-up Touchpoint"
-          maxWidth="max-w-md"
-        >
-          <form onSubmit={handleFollowUpSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <FormInput
-                label="Follow-up Date"
-                type="date"
-                value={followUpForm.date}
-                onChange={(e) => setFollowUpForm({ ...followUpForm, date: e.target.value })}
-                required
-              />
-              <FormSelect
-                label="Staff Member"
-                value={followUpForm.staff}
-                onChange={(e) => setFollowUpForm({ ...followUpForm, staff: e.target.value })}
-                options={['Sarah Jenkins', 'Vikramaditya Sharma', 'Rohan Verma', 'Ananya Sen']}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono font-semibold uppercase tracking-wider text-[#0A0A0A]">
-                Follow-up Notes & Discussion <span className="text-red-600">*</span>
-              </label>
-              <textarea
-                rows={3}
-                value={followUpForm.notes}
-                onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })}
-                placeholder="Log discussion points, proposal updates, or next steps..."
-                required
-                className="px-3 py-2 bg-[#F7F5EF]/50 text-xs font-body text-[#0A0A0A] rounded-sm border border-[#0A0A0A]/14 focus:outline-none focus:border-[#C8A13A]"
-              />
-            </div>
-
-            <FormSelect
-              label="Outcome / Status"
-              value={followUpForm.outcome}
-              onChange={(e) => setFollowUpForm({ ...followUpForm, outcome: e.target.value })}
-              options={['Pending Response', 'Proposal Sent', 'Meeting Scheduled', 'Converted', 'Closed / Lost']}
-            />
-
-            <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-              <button
-                type="button"
-                onClick={() => setIsFollowUpModalOpen(false)}
-                className="px-4 py-2 text-xs font-mono text-[#685C43]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white rounded-md hover:bg-[#725B20]"
-              >
-                Save Follow-up Entry
-              </button>
-            </div>
-          </form>
-        </AdminModal>
-      )}
     </div>
   );
 };
+
 

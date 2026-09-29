@@ -9,7 +9,7 @@ import { CTASection } from '../components/sections/CTASection';
 
 export const Home = () => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen w-full overflow-x-hidden p-0 m-0">
       <Hero />
       <ServiceList />
       <ServicesCarousel />

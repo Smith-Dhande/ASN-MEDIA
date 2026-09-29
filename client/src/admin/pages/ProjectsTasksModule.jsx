@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { AdminCard } from '../components/ui/AdminCard';
 import { DataTable } from '../components/ui/DataTable';
 import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SlideDrawer } from '../components/ui/SlideDrawer';
-import { AdminModal } from '../components/ui/AdminModal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
@@ -53,9 +52,7 @@ export const ProjectsTasksModule = () => {
   } = useAdminData();
 
   const location = useLocation();
-
-  const isTasksMode = location.pathname.endsWith('/tasks');
-  const isWorkloadMode = location.pathname.endsWith('/workload');
+  const navigate = useNavigate();
 
   // Pagination & Filter States
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,6 +77,13 @@ export const ProjectsTasksModule = () => {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, type: '', id: '', title: '' });
+
+  const isTasksMode = location.pathname.endsWith('/tasks');
+  const isWorkloadMode = location.pathname.endsWith('/workload');
+  const isCreateProjectMode = location.pathname.endsWith('/projects/create') || isCreateProjectOpen;
+  const isEditProjectMode = location.pathname.includes('/projects/edit/') || isEditProjectOpen;
+  const isCreateTaskMode = location.pathname.endsWith('/tasks/create') || isCreateTaskOpen;
+  const isEditTaskMode = location.pathname.includes('/tasks/edit/') || isEditTaskOpen;
 
   // Toast feedback
   const [feedback, setFeedback] = useState({ show: false, message: '', type: 'success' });
@@ -143,6 +147,7 @@ export const ProjectsTasksModule = () => {
       status: 'In Progress',
     });
     setIsCreateProjectOpen(true);
+    navigate('/admin/projects/create');
   };
 
   const handleCreateProjectSubmit = (e) => {
@@ -153,6 +158,7 @@ export const ProjectsTasksModule = () => {
       clientId: clientObj?.id || 'cli_101',
     });
     setIsCreateProjectOpen(false);
+    navigate('/admin/projects');
     showToast('New client project created successfully!');
   };
 
@@ -170,6 +176,7 @@ export const ProjectsTasksModule = () => {
       status: proj.status,
     });
     setIsEditProjectOpen(true);
+    navigate(`/admin/projects/edit/${proj.id}`);
   };
 
   const handleEditProjectSubmit = (e) => {
@@ -178,6 +185,7 @@ export const ProjectsTasksModule = () => {
     updateProject(selectedProject.id, projectForm);
     setSelectedProject((prev) => ({ ...prev, ...projectForm }));
     setIsEditProjectOpen(false);
+    navigate('/admin/projects');
     showToast('Project updated successfully!');
   };
 
@@ -231,6 +239,7 @@ export const ProjectsTasksModule = () => {
       description: '',
     });
     setIsCreateTaskOpen(true);
+    navigate('/admin/tasks/create');
   };
 
   const handleCreateTaskSubmit = (e) => {
@@ -241,6 +250,7 @@ export const ProjectsTasksModule = () => {
       clientName: parentProj?.clientName || taskForm.clientName,
     });
     setIsCreateTaskOpen(false);
+    navigate('/admin/tasks');
     showToast('Task added to pipeline!');
   };
 
@@ -258,6 +268,7 @@ export const ProjectsTasksModule = () => {
       description: task.description || '',
     });
     setIsEditTaskOpen(true);
+    navigate(`/admin/tasks/edit/${task.id}`);
   };
 
   const handleEditTaskSubmit = (e) => {
@@ -266,6 +277,7 @@ export const ProjectsTasksModule = () => {
     updateTask(selectedTask.id, taskForm);
     setSelectedTask((prev) => ({ ...prev, ...taskForm }));
     setIsEditTaskOpen(false);
+    navigate('/admin/tasks');
     showToast('Task details updated!');
   };
 
@@ -408,8 +420,234 @@ export const ProjectsTasksModule = () => {
     },
   ];
 
+  // Render Full Workspace Form Views if in Create/Edit mode
+  if (isCreateProjectMode || isEditProjectMode) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        {feedback.show && (
+          <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
+            <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#0A0A0A]/08 gap-3">
+          <div>
+            <div className="text-xs font-mono text-[#685C43] mb-1">
+              <span>Projects</span> / <span className="font-bold text-[#111111]">{isEditProjectMode ? 'Edit Project' : 'New Project'}</span>
+            </div>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              {isEditProjectMode ? `Edit Project: ${projectForm.title || selectedProject?.title}` : 'Initialize New Client Project'}
+            </h2>
+          </div>
+
+          <button
+            onClick={() => { setIsCreateProjectOpen(false); setIsEditProjectOpen(false); navigate('/admin/projects'); }}
+            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded-xs transition-colors"
+          >
+            ← Back to Projects
+          </button>
+        </div>
+
+        <form onSubmit={isEditProjectMode ? handleEditProjectSubmit : handleCreateProjectSubmit} className="space-y-6">
+          <AdminCard title="01. Project Scope & Client Info" className="space-y-4">
+            <FormInput
+              label="Project Title"
+              value={projectForm.title}
+              onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
+              placeholder="e.g. Q4 Brand Commercial & Reels Campaign"
+              required
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Associated Client"
+                value={projectForm.clientName}
+                onChange={(e) => setProjectForm({ ...projectForm, clientName: e.target.value })}
+                options={clients.map((c) => c.name)}
+              />
+              <FormSelect
+                label="Service Stream"
+                value={projectForm.serviceName}
+                onChange={(e) => setProjectForm({ ...projectForm, serviceName: e.target.value })}
+                options={services.map((s) => s.name)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-mono font-bold text-[#111111] uppercase tracking-wider block mb-1">
+                Project Scope & Deliverable Details
+              </label>
+              <textarea
+                rows={4}
+                value={projectForm.description}
+                onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+                placeholder="Detail key campaign objectives, video assets, editorial deliverables..."
+                className="w-full px-3 py-2 text-xs font-body border border-[#0A0A0A]/14 rounded-xs focus:outline-none focus:border-[#8E722A]"
+              />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="02. Schedule, Priority & Team Assignment" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormInput
+                label="Commencement Date"
+                type="date"
+                value={projectForm.startDate}
+                onChange={(e) => setProjectForm({ ...projectForm, startDate: e.target.value })}
+                required
+              />
+              <FormInput
+                label="Completion Deadline"
+                type="date"
+                value={projectForm.dueDate}
+                onChange={(e) => setProjectForm({ ...projectForm, dueDate: e.target.value })}
+                required
+              />
+              <FormSelect
+                label="Priority Level"
+                value={projectForm.priority}
+                onChange={(e) => setProjectForm({ ...projectForm, priority: e.target.value })}
+                options={['Low', 'Medium', 'High', 'Urgent']}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Lead Responsible Staff"
+                value={projectForm.leadStaff}
+                onChange={(e) => setProjectForm({ ...projectForm, leadStaff: e.target.value })}
+                options={staff.map((s) => s.name)}
+              />
+              <FormSelect
+                label="Initial Pipeline Status"
+                value={projectForm.status}
+                onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
+                options={['Planning', 'In Progress', 'On Hold', 'Completed', 'Cancelled']}
+              />
+            </div>
+          </AdminCard>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#0A0A0A]/10">
+            <button
+              type="button"
+              onClick={() => { setIsCreateProjectOpen(false); setIsEditProjectOpen(false); navigate('/admin/projects'); }}
+              className="px-5 py-2.5 text-xs font-mono text-[#685C43] hover:text-[#111111]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors"
+            >
+              {isEditProjectMode ? 'Save Project Changes' : 'Create Project'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (isCreateTaskMode || isEditTaskMode) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        {feedback.show && (
+          <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
+            <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#0A0A0A]/08 gap-3">
+          <div>
+            <div className="text-xs font-mono text-[#685C43] mb-1">
+              <span>Tasks</span> / <span className="font-bold text-[#111111]">{isEditTaskMode ? 'Edit Task' : 'New Task'}</span>
+            </div>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              {isEditTaskMode ? `Edit Production Task: ${taskForm.title || selectedTask?.title}` : 'Add New Production Task'}
+            </h2>
+          </div>
+
+          <button
+            onClick={() => { setIsCreateTaskOpen(false); setIsEditTaskOpen(false); navigate('/admin/tasks'); }}
+            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded-xs transition-colors"
+          >
+            ← Back to Tasks
+          </button>
+        </div>
+
+        <form onSubmit={isEditTaskMode ? handleEditTaskSubmit : handleCreateTaskSubmit} className="space-y-6">
+          <AdminCard title="01. Task Overview & Parent Context" className="space-y-4">
+            <FormInput
+              label="Task Title"
+              value={taskForm.title}
+              onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+              placeholder="e.g. Color Grading Final Commercial Cut"
+              required
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Parent Client Project"
+                value={taskForm.projectId}
+                onChange={(e) => setTaskForm({ ...taskForm, projectId: e.target.value })}
+                options={projects.map((p) => p.title)}
+              />
+              <FormSelect
+                label="Assigned Staff Member"
+                value={taskForm.assignee}
+                onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}
+                options={staff.map((s) => s.name)}
+              />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="02. Task Execution & Deadline Parameters" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormSelect
+                label="Task Status"
+                value={taskForm.status}
+                onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
+                options={['To Do', 'In Progress', 'Review', 'Completed']}
+              />
+              <FormSelect
+                label="Priority Designation"
+                value={taskForm.priority}
+                onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                options={['Low', 'Medium', 'High', 'Urgent']}
+              />
+              <FormInput
+                label="Target Due Date"
+                type="date"
+                value={taskForm.dueDate}
+                onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                required
+              />
+            </div>
+          </AdminCard>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#0A0A0A]/10">
+            <button
+              type="button"
+              onClick={() => { setIsCreateTaskOpen(false); setIsEditTaskOpen(false); navigate('/admin/tasks'); }}
+              className="px-5 py-2.5 text-xs font-mono text-[#685C43] hover:text-[#111111]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors"
+            >
+              {isEditTaskMode ? 'Save Task Changes' : 'Create Task'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 font-body">
+    <div className="w-full space-y-6 font-body">
       {/* Toast Feedback */}
       {feedback.show && (
         <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A] animate-fade-in">
@@ -1030,308 +1268,6 @@ export const ProjectsTasksModule = () => {
           </div>
         )}
       </SlideDrawer>
-
-      {/* ========================================================= */}
-      {/* MODALS: CREATE / EDIT PROJECT                             */}
-      {/* ========================================================= */}
-      <AdminModal
-        isOpen={isCreateProjectOpen}
-        onClose={() => setIsCreateProjectOpen(false)}
-        title="Initialize New Client Project"
-      >
-        <form onSubmit={handleCreateProjectSubmit} className="space-y-4">
-          <FormInput
-            label="Project Name"
-            value={projectForm.title}
-            onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
-            placeholder="e.g. Q4 Brand Commercial & Reels Campaign"
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Client"
-              value={projectForm.clientName}
-              onChange={(e) => setProjectForm({ ...projectForm, clientName: e.target.value })}
-              options={clients.map((c) => c.name)}
-            />
-            <FormSelect
-              label="Associated Service"
-              value={projectForm.serviceName}
-              onChange={(e) => setProjectForm({ ...projectForm, serviceName: e.target.value })}
-              options={services.map((s) => s.name)}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <FormInput
-              label="Start Date"
-              type="date"
-              value={projectForm.startDate}
-              onChange={(e) => setProjectForm({ ...projectForm, startDate: e.target.value })}
-              required
-            />
-            <FormInput
-              label="Deadline"
-              type="date"
-              value={projectForm.dueDate}
-              onChange={(e) => setProjectForm({ ...projectForm, dueDate: e.target.value })}
-              required
-            />
-            <FormSelect
-              label="Priority"
-              value={projectForm.priority}
-              onChange={(e) => setProjectForm({ ...projectForm, priority: e.target.value })}
-              options={['Low', 'Medium', 'High', 'Urgent']}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Lead Responsible Staff"
-              value={projectForm.leadStaff}
-              onChange={(e) => setProjectForm({ ...projectForm, leadStaff: e.target.value })}
-              options={staff.map((s) => s.name)}
-            />
-            <FormSelect
-              label="Initial Status"
-              value={projectForm.status}
-              onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
-              options={['Planning', 'In Progress', 'On Hold', 'Completed']}
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-mono font-bold text-[#111111] uppercase tracking-wider block mb-1">
-              Project Description & Scope
-            </label>
-            <textarea
-              rows={3}
-              value={projectForm.description}
-              onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
-              placeholder="Detail key objectives, deliverables, and guidelines..."
-              className="w-full px-3 py-2 text-xs font-body border border-[#0A0A0A]/14 rounded-xs focus:outline-none focus:border-[#8E722A]"
-            />
-          </div>
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsCreateProjectOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white hover:bg-[#725B20] rounded-xs transition-colors"
-            >
-              Create Project
-            </button>
-          </div>
-        </form>
-      </AdminModal>
-
-      <AdminModal
-        isOpen={isEditProjectOpen}
-        onClose={() => setIsEditProjectOpen(false)}
-        title="Edit Project Details"
-      >
-        <form onSubmit={handleEditProjectSubmit} className="space-y-4">
-          <FormInput
-            label="Project Title"
-            value={projectForm.title}
-            onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Priority"
-              value={projectForm.priority}
-              onChange={(e) => setProjectForm({ ...projectForm, priority: e.target.value })}
-              options={['Low', 'Medium', 'High', 'Urgent']}
-            />
-            <FormSelect
-              label="Status"
-              value={projectForm.status}
-              onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
-              options={['Planning', 'In Progress', 'On Hold', 'Completed', 'Cancelled']}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput
-              label="Start Date"
-              type="date"
-              value={projectForm.startDate}
-              onChange={(e) => setProjectForm({ ...projectForm, startDate: e.target.value })}
-            />
-            <FormInput
-              label="Deadline"
-              type="date"
-              value={projectForm.dueDate}
-              onChange={(e) => setProjectForm({ ...projectForm, dueDate: e.target.value })}
-            />
-          </div>
-
-          <FormSelect
-            label="Lead Staff"
-            value={projectForm.leadStaff}
-            onChange={(e) => setProjectForm({ ...projectForm, leadStaff: e.target.value })}
-            options={staff.map((s) => s.name)}
-          />
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsEditProjectOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white hover:bg-[#725B20] rounded-xs transition-colors"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </AdminModal>
-
-      {/* ========================================================= */}
-      {/* MODALS: CREATE / EDIT TASK                                */}
-      {/* ========================================================= */}
-      <AdminModal
-        isOpen={isCreateTaskOpen}
-        onClose={() => setIsCreateTaskOpen(false)}
-        title="Add New Production Task"
-      >
-        <form onSubmit={handleCreateTaskSubmit} className="space-y-4">
-          <FormInput
-            label="Task Title"
-            value={taskForm.title}
-            onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-            placeholder="e.g. Color Grading Final Commercial Cut"
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Parent Project"
-              value={taskForm.projectId}
-              onChange={(e) => setTaskForm({ ...taskForm, projectId: e.target.value })}
-              options={projects.map((p) => p.title)}
-            />
-            <FormSelect
-              label="Assigned Staff"
-              value={taskForm.assignee}
-              onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}
-              options={staff.map((s) => s.name)}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <FormSelect
-              label="Status"
-              value={taskForm.status}
-              onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
-              options={['To Do', 'In Progress', 'Review', 'Completed']}
-            />
-            <FormSelect
-              label="Priority"
-              value={taskForm.priority}
-              onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
-              options={['Low', 'Medium', 'High', 'Urgent']}
-            />
-            <FormInput
-              label="Due Date"
-              type="date"
-              value={taskForm.dueDate}
-              onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsCreateTaskOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white hover:bg-[#725B20] rounded-xs transition-colors"
-            >
-              Create Task
-            </button>
-          </div>
-        </form>
-      </AdminModal>
-
-      <AdminModal
-        isOpen={isEditTaskOpen}
-        onClose={() => setIsEditTaskOpen(false)}
-        title="Edit Production Task"
-      >
-        <form onSubmit={handleEditTaskSubmit} className="space-y-4">
-          <FormInput
-            label="Task Title"
-            value={taskForm.title}
-            onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Assigned Staff"
-              value={taskForm.assignee}
-              onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}
-              options={staff.map((s) => s.name)}
-            />
-            <FormSelect
-              label="Priority"
-              value={taskForm.priority}
-              onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
-              options={['Low', 'Medium', 'High', 'Urgent']}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormSelect
-              label="Status"
-              value={taskForm.status}
-              onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
-              options={['To Do', 'In Progress', 'Review', 'Completed']}
-            />
-            <FormInput
-              label="Due Date"
-              type="date"
-              value={taskForm.dueDate}
-              onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-            />
-          </div>
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsEditTaskOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] text-white hover:bg-[#725B20] rounded-xs transition-colors"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </AdminModal>
 
       {/* CONFIRM DELETE DIALOG */}
       <ConfirmDialog

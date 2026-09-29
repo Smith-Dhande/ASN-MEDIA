@@ -5,7 +5,6 @@ import { DataTable } from '../components/ui/DataTable';
 import { FilterBar } from '../components/ui/FilterBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { AdminCard } from '../components/ui/AdminCard';
-import { AdminModal } from '../components/ui/AdminModal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormInput } from '../components/ui/FormInput';
 import { FormSelect } from '../components/ui/FormSelect';
@@ -59,6 +58,9 @@ export const StaffRolesModule = () => {
 
   const isPermissionsMode = location.pathname.endsWith('/permissions');
 
+  const isAddStaffMode = location.pathname.endsWith('/staff/add') || isAddModalOpen;
+  const isEditStaffMode = location.pathname.includes('/staff/edit/') || isEditModalOpen;
+
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roleFilter, location.pathname]);
@@ -87,12 +89,14 @@ export const StaffRolesModule = () => {
   const handleOpenAdd = () => {
     setStaffForm({ name: '', email: '', role: 'Content Strategist', status: 'Active' });
     setIsAddModalOpen(true);
+    navigate('/admin/staff/add');
   };
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
     addStaff(staffForm);
     setIsAddModalOpen(false);
+    navigate('/admin/staff');
     showToast('New staff member account provisioned!');
   };
 
@@ -105,6 +109,7 @@ export const StaffRolesModule = () => {
       status: member.status,
     });
     setIsEditModalOpen(true);
+    navigate(`/admin/staff/edit/${member.id}`);
   };
 
   const handleEditSubmit = (e) => {
@@ -112,6 +117,7 @@ export const StaffRolesModule = () => {
     if (!selectedStaff) return;
     updateStaff(selectedStaff.id, staffForm);
     setIsEditModalOpen(false);
+    navigate('/admin/staff');
     showToast('Staff profile details updated.');
   };
 
@@ -205,8 +211,100 @@ export const StaffRolesModule = () => {
     },
   ];
 
+  if (isAddStaffMode || isEditStaffMode) {
+    return (
+      <div className="w-full space-y-6 font-body">
+        {feedback.show && (
+          <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A]">
+            <CheckCircle2 className="w-4 h-4 text-[#8E722A]" />
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#0A0A0A]/08 gap-3">
+          <div>
+            <div className="text-xs font-mono text-[#685C43] mb-1">
+              <span>Staff & Roles</span> / <span className="font-bold text-[#111111]">{isEditStaffMode ? 'Edit Staff Account' : 'Provision Staff Member'}</span>
+            </div>
+            <h2 className="font-display text-2xl font-normal text-[#111111]">
+              {isEditStaffMode ? `Edit Profile: ${staffForm.name || selectedStaff?.name}` : 'Provision New Staff Member Account'}
+            </h2>
+          </div>
+
+          <button
+            onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); navigate('/admin/staff'); }}
+            className="px-3.5 py-1.5 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] hover:text-white border border-[#0A0A0A]/12 text-[#111111] rounded-xs transition-colors"
+          >
+            ← Back to Staff Directory
+          </button>
+        </div>
+
+        <form onSubmit={isEditStaffMode ? handleEditSubmit : handleAddSubmit} className="space-y-6">
+          <AdminCard title="01. Personal & Contact Profile" className="space-y-4">
+            <FormInput
+              label="Full Name"
+              value={staffForm.name}
+              onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+              placeholder="e.g. Vikramaditya Sharma"
+              required
+            />
+
+            <FormInput
+              label="Corporate Email Address"
+              type="email"
+              value={staffForm.email}
+              onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+              placeholder="name@asnmedia.in"
+              required
+            />
+          </AdminCard>
+
+          <AdminCard title="02. Role Designation & Access Parameters" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormSelect
+                label="Role Designation"
+                value={staffForm.role}
+                onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
+                options={[
+                  'Super Admin',
+                  'Project Manager',
+                  'Content Strategist',
+                  'Video Editor',
+                  'Accountant',
+                ]}
+              />
+
+              <FormSelect
+                label="Account Authorization Status"
+                value={staffForm.status}
+                onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
+                options={['Active', 'Inactive']}
+              />
+            </div>
+          </AdminCard>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#0A0A0A]/10">
+            <button
+              type="button"
+              onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); navigate('/admin/staff'); }}
+              className="px-5 py-2.5 text-xs font-mono text-[#685C43] hover:text-[#111111]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 text-xs font-mono font-bold bg-[#111111] text-[#F7F5EF] hover:bg-[#8E722A] rounded-xs transition-colors"
+            >
+              {isEditStaffMode ? 'Save Profile Changes' : 'Provision Staff Account'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 font-body">
+    <div className="w-full space-y-6 font-body">
       {/* Toast Feedback */}
       {feedback.show && (
         <div className="fixed top-4 right-4 z-50 bg-[#111111] text-[#F7F5EF] px-4 py-3 rounded-md shadow-xl font-mono text-xs flex items-center gap-2 border border-[#8E722A] animate-fade-in">
@@ -380,116 +478,6 @@ export const StaffRolesModule = () => {
           </AdminCard>
         </>
       )}
-
-      {/* Add Staff Modal */}
-      <AdminModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title="Provision New Staff Member Account"
-      >
-        <form onSubmit={handleAddSubmit} className="space-y-4">
-          <FormInput
-            label="Full Name"
-            value={staffForm.name}
-            onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
-            placeholder="e.g. Vikramaditya Sharma"
-            required
-          />
-          <FormInput
-            label="Email Address"
-            type="email"
-            value={staffForm.email}
-            onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
-            placeholder="name@asnmedia.in"
-            required
-          />
-          <FormSelect
-            label="Role Designation"
-            value={staffForm.role}
-            onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
-            options={[
-              'Super Admin',
-              'Project Manager',
-              'Content Strategist',
-              'Video Editor',
-              'Accountant',
-            ]}
-          />
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] hover:bg-[#725B20] text-white rounded-xs transition-colors"
-            >
-              Create Account
-            </button>
-          </div>
-        </form>
-      </AdminModal>
-
-      {/* Edit Staff Modal */}
-      <AdminModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Staff Member Details"
-      >
-        <form onSubmit={handleEditSubmit} className="space-y-4">
-          <FormInput
-            label="Full Name"
-            value={staffForm.name}
-            onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
-            required
-          />
-          <FormInput
-            label="Email Address"
-            type="email"
-            value={staffForm.email}
-            onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
-            required
-          />
-          <FormSelect
-            label="Role Designation"
-            value={staffForm.role}
-            onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
-            options={[
-              'Super Admin',
-              'Project Manager',
-              'Content Strategist',
-              'Video Editor',
-              'Accountant',
-            ]}
-          />
-          <FormSelect
-            label="Account Status"
-            value={staffForm.status}
-            onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
-            options={['Active', 'Inactive']}
-          />
-
-          <div className="pt-3 flex justify-end gap-2 border-t border-[#0A0A0A]/10">
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="px-4 py-2 text-xs font-mono text-[#685C43]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-mono font-bold bg-[#8E722A] hover:bg-[#725B20] text-white rounded-xs transition-colors"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </AdminModal>
 
       {/* CONFIRM STATUS DIALOG */}
       <ConfirmDialog

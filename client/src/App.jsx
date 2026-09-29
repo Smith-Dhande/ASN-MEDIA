@@ -34,6 +34,17 @@ import { StaffRolesModule } from './admin/pages/StaffRolesModule';
 import { ActivityLogsModule } from './admin/pages/ActivityLogsModule';
 import { SettingsModule } from './admin/pages/SettingsModule';
 
+// Client Portal Imports
+import { PortalLayout } from './portal/components/layout/PortalLayout';
+import { PortalDashboard } from './portal/pages/PortalDashboard';
+import { PortalPackages } from './portal/pages/PortalPackages';
+import { PortalServices } from './portal/pages/PortalServices';
+import { PortalProjects } from './portal/pages/PortalProjects';
+import { PortalPayments } from './portal/pages/PortalPayments';
+import { PortalEnquiries } from './portal/pages/PortalEnquiries';
+import { PortalProfile } from './portal/pages/PortalProfile';
+import { PortalNotifications } from './portal/pages/PortalNotifications';
+
 // Scroll To Top component on route change
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -48,9 +59,9 @@ const ScrollToTop = () => {
 // Public Website Layout Shell
 const PublicLayout = () => (
   <AuthProvider>
-    <div className="min-h-screen flex flex-col bg-[#F7F5EF] text-[#111111] font-body selection:bg-[#C8A13A] selection:text-black">
+    <div className="min-h-screen flex flex-col w-full max-w-full overflow-x-hidden p-0 m-0 bg-[#F7F5EF] text-[#111111] font-body selection:bg-[#C8A13A] selection:text-black">
       <Navbar />
-      <main className="flex-grow">
+      <main className="flex-grow w-full max-w-full p-0 m-0 overflow-x-hidden">
         <Outlet />
       </main>
       <Footer />
@@ -104,6 +115,21 @@ export function App() {
           <Route path="/insights" element={<Insights />} />
           <Route path="/terms" element={<TermsPage />} />
           {/* Public Catch-All 404 Route */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+
+        {/* CLIENT PORTAL ROUTES */}
+        <Route path="/portal" element={<PortalLayout />}>
+          <Route index element={<Navigate to="/portal/dashboard" replace />} />
+          <Route path="dashboard" element={<PortalDashboard />} />
+          <Route path="packages" element={<PortalPackages />} />
+          <Route path="services" element={<PortalServices />} />
+          <Route path="projects" element={<PortalProjects />} />
+          <Route path="projects/:projectId" element={<PortalProjects />} />
+          <Route path="payments" element={<PortalPayments />} />
+          <Route path="enquiries" element={<PortalEnquiries />} />
+          <Route path="profile" element={<PortalProfile />} />
+          <Route path="notifications" element={<PortalNotifications />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
