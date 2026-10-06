@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-ivory: #F7F5EF;
+    --color-white: #FFFFFF;
+    --color-black: #0A0A0A;
+
+    --color-gold: #C8A13A;
+    --color-gold-dark: #8E722A;
+
+    --color-text: #111111;
+    --color-text-muted: #66615A;
+
+    --color-border: rgba(10, 10, 10, 0.14);
+    --color-border-dark: rgba(255, 255, 255, 0.16);
+
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 16px;
+
+    --container-max: 1280px;
+    --container-padding: clamp(20px, 4vw, 64px);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-body);
+    background-color: var(--color-ivory);
+    color: var(--color-text);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    background-color: var(--color-ivory);
+    color: var(--color-text);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+}
+
+/* Custom Utilities */
+.container-custom {
+  width: min(calc(100% - (var(--container-padding) * 2)), var(--container-max));
+  margin-inline: auto;
+}
+
+/* Lenis Smooth Scroll */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* Admin Page Content Transition */
+@keyframes adminPageFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-admin-page {
+  animation: adminPageFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Subtle ASN Ivory Shimmer for Skeleton States */
+@keyframes asnShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.asn-shimmer {
+  background: linear-gradient(90deg, #FAF8F3 25%, #EDE8DA 50%, #FAF8F3 75%);
+  background-size: 200% 100%;
+  animation: asnShimmer 2s infinite ease-in-out;
+}
+
+/* Auth Drawer & Fade Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-admin-page,
+  .animate-fadeIn,
+  .animate-slideInRight {
+    animation: none !important;
+  }
+
+  .asn-shimmer {
+    animation: none !important;
+    background: #FAF8F3 !important;
+  }
+}
+
