@@ -44,6 +44,20 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+const PRESET_INDUSTRIES = [
+  { value: 'General Business', label: '🏢 General Business' },
+  { value: 'Hospital / Healthcare', label: '🏥 Hospital / Healthcare & Clinics' },
+  { value: 'Automobile & Garage', label: '🚗 Automobile & Garage Services' },
+  { value: 'Restaurant & Hospitality', label: '🍽️ Restaurant & Hospitality' },
+  { value: 'Retail & E-Commerce', label: '🛍️ Retail & E-Commerce' },
+  { value: 'Real Estate & Architecture', label: '🏗️ Real Estate & Architecture' },
+  { value: 'Salon, Spa & Wellness', label: '💇 Salon, Spa & Wellness' },
+  { value: 'Fitness & Gym', label: '💪 Fitness & Gym' },
+  { value: 'Education & Coaching', label: '🎓 Education & Coaching' },
+  { value: 'Corporate & Professional Services', label: '💼 Corporate & Professional Services' },
+  { value: 'Other', label: '✏️ Other / Custom Business Category (Manual)' }
+];
+
 export const ReviewScannersModule = () => {
   const { reviewScanners, clients, addScanner, updateScanner, deleteScanner, addClient } = useAdminData();
   const location = useLocation();
@@ -62,6 +76,10 @@ export const ReviewScannersModule = () => {
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, scanner: null });
   const [confirmStatusModal, setConfirmStatusModal] = useState({ isOpen: false, scanner: null });
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
+
+  // Custom Category State
+  const [isCustomIndustryOpen, setIsCustomIndustryOpen] = useState(false);
+  const [customIndustryInput, setCustomIndustryInput] = useState('');
 
   // Quick Auto-Pause Modal
   const [quickPauseModal, setQuickPauseModal] = useState({
@@ -177,6 +195,8 @@ export const ReviewScannersModule = () => {
 
   const handleOpenCreate = () => {
     setEditMode(false);
+    setIsCustomIndustryOpen(false);
+    setCustomIndustryInput('');
     setScannerForm(getEmptyScannerForm());
     setIsCreateModalOpen(true);
     navigate('/admin/scanners/create');
@@ -184,6 +204,8 @@ export const ReviewScannersModule = () => {
 
   const handleOpenCreateDemo = () => {
     setEditMode(false);
+    setIsCustomIndustryOpen(false);
+    setCustomIndustryInput('');
     const demoSlug = `demo-showcase-${Math.random().toString(36).substring(2, 6)}`;
     const futureDate = new Date(Date.now() + 60 * 60 * 1000);
     setScannerForm({
@@ -204,6 +226,11 @@ export const ReviewScannersModule = () => {
 
   const handleOpenEdit = (scn) => {
     setEditMode(true);
+    const isPreset = PRESET_INDUSTRIES.some(p => p.value !== 'Other' && p.value.toLowerCase() === (scn.industry || '').toLowerCase());
+    const isCustom = !isPreset && Boolean(scn.industry && scn.industry !== 'General Business');
+    setIsCustomIndustryOpen(isCustom);
+    setCustomIndustryInput(isCustom ? (scn.industry || '') : '');
+
     setScannerForm({
       id: scn.id || scn._id,
       clientId: scn.clientId || '',
@@ -452,9 +479,17 @@ export const ReviewScannersModule = () => {
     const isDemo = Boolean(scannerForm.isDemo);
     const demoMins = Number(scannerForm.demoDurationMinutes) || 60;
 
+    let finalIndustry = (scannerForm.industry || 'General Business').trim();
+    if (isCustomIndustryOpen && customIndustryInput.trim()) {
+      finalIndustry = customIndustryInput.trim();
+    } else if (finalIndustry === 'Other' || !finalIndustry) {
+      finalIndustry = 'General Business';
+    }
+
     // Calculate autoPauseAt / demoExpiresAt if duration was chosen
     let payload = {
       ...scannerForm,
+      industry: finalIndustry,
       isDemo,
       demoDurationMinutes: demoMins,
       name: finalName,
@@ -571,7 +606,8 @@ export const ReviewScannersModule = () => {
     const matchesSearch =
       (scn.clientName || '').toLowerCase().includes(searchLower) ||
       (scn.name || scn.placeName || '').toLowerCase().includes(searchLower) ||
-      (scn.slug || '').toLowerCase().includes(searchLower);
+      (scn.slug || '').toLowerCase().includes(searchLower) ||
+      (scn.industry || '').toLowerCase().includes(searchLower);
     
     if (statusFilter === 'Demo') {
       return matchesSearch && (scn.isDemo || (scn.name && scn.name.toLowerCase().includes('demo')));
@@ -598,8 +634,13 @@ export const ReviewScannersModule = () => {
               </span>
             )}
           </div>
-          <div className="text-[11px] text-[#685C43] font-mono ml-5">
-            {row.name || row.placeName || 'Review Scanner'} • <span className="text-[#8E722A]">/review/{row.slug}</span>
+          <div className="text-[11px] text-[#685C43] font-mono ml-5 flex items-center gap-1.5 flex-wrap">
+            <span>{row.name || row.placeName || 'Review Scanner'}</span>
+            <span>•</span>
+            <span className="text-[#8E722A]">/review/{row.slug}</span>
+            <span className="px-1.5 py-0.2 bg-[#FAF8F3] border border-[#0A0A0A]/15 text-[#555] rounded text-[9.5px] font-sans font-semibold">
+              {row.industry || 'General Business'}
+            </span>
           </div>
         </div>
       ),
@@ -906,34 +947,76 @@ export const ReviewScannersModule = () => {
               <div>
                 <label className="block text-xs font-semibold text-[#111111] font-mono mb-1.5 flex items-center justify-between">
                   <span>Business Industry & Category</span>
-                  {scannerForm.industry === 'Hospital / Healthcare' && (
+                  {scannerForm.industry === 'Hospital / Healthcare' && !isCustomIndustryOpen && (
                     <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded">
                       🏥 Hospital Mode Enabled
                     </span>
                   )}
+                  {isCustomIndustryOpen && (
+                    <span className="text-[10px] text-amber-800 font-bold bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                      ✏️ Manual Custom Category
+                    </span>
+                  )}
                 </label>
                 <select
-                  value={scannerForm.industry || 'General Business'}
+                  value={
+                    isCustomIndustryOpen
+                      ? 'Other'
+                      : (PRESET_INDUSTRIES.find(p => p.value.toLowerCase() === (scannerForm.industry || '').toLowerCase())?.value || 'Other')
+                  }
                   onChange={(e) => {
                     const selInd = e.target.value;
-                    setScannerForm((prev) => ({
-                      ...prev,
-                      industry: selInd,
-                      doctors: prev.doctors || []
-                    }));
+                    if (selInd === 'Other') {
+                      setIsCustomIndustryOpen(true);
+                      setScannerForm((prev) => ({
+                        ...prev,
+                        industry: customIndustryInput.trim() || 'Custom Business Category',
+                        doctors: prev.doctors || []
+                      }));
+                    } else {
+                      setIsCustomIndustryOpen(false);
+                      setScannerForm((prev) => ({
+                        ...prev,
+                        industry: selInd,
+                        doctors: prev.doctors || []
+                      }));
+                    }
                   }}
                   className="w-full bg-[#FAF8F3] border border-[#0A0A0A]/15 text-[#111111] text-xs rounded p-2.5 font-body focus:outline-none focus:border-[#8E722A]"
                 >
-                  <option value="General Business">General Business</option>
-                  <option value="Hospital / Healthcare">🏥 Hospital / Healthcare & Clinics</option>
-                  <option value="Restaurant & Hospitality">🍽️ Restaurant & Hospitality</option>
-                  <option value="Retail & E-Commerce">🛍️ Retail & E-Commerce</option>
-                  <option value="Real Estate & Architecture">🏢 Real Estate & Architecture</option>
-                  <option value="Salon, Spa & Wellness">💇 Salon, Spa & Wellness</option>
-                  <option value="Fitness & Gym">💪 Fitness & Gym</option>
-                  <option value="Education & Coaching">🎓 Education & Coaching</option>
-                  <option value="Corporate & Professional Services">💼 Corporate & Professional Services</option>
+                  {PRESET_INDUSTRIES.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
                 </select>
+
+                {/* MANUAL / CUSTOM BUSINESS CATEGORY INPUT */}
+                {isCustomIndustryOpen && (
+                  <div className="mt-2.5 p-3 bg-amber-50/90 border border-amber-300 rounded-xl space-y-1.5 animate-fadeIn">
+                    <label className="block text-[11px] font-mono font-bold text-amber-950 flex items-center justify-between">
+                      <span>Specify Business Category:</span>
+                      <span className="text-[10px] font-mono text-amber-800 bg-amber-200/70 px-1.5 py-0.2 rounded font-semibold">
+                        Manual Type
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customIndustryInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomIndustryInput(val);
+                        setScannerForm((prev) => ({ ...prev, industry: val }));
+                      }}
+                      placeholder="e.g. Photography Studio, Dental Clinic, Legal & Law Firm, Pet Care, Jewellery Boutique..."
+                      className="w-full bg-white border border-amber-300 text-[#111111] text-xs rounded-lg p-2 font-body focus:outline-none focus:border-[#8E722A] focus:ring-1 focus:ring-[#8E722A]"
+                      required
+                    />
+                    <p className="text-[10.5px] text-amber-800/90 leading-tight">
+                      💡 When patients or customers scan this standee, ASN AI adapts review vocabulary, service tags, and praise tone specifically for this category.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </AdminCard>

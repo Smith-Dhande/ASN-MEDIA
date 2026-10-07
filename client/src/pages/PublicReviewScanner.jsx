@@ -78,19 +78,31 @@ function getIndustryCategory(industryStr, businessNameStr) {
   const ind = (industryStr || '').toLowerCase();
   const bName = (businessNameStr || '').toLowerCase();
   
-  if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
+  if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || ind.includes('doctor') || ind.includes('medical') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
     return 'hospital';
   }
-  if (ind.includes('auto') || ind.includes('garage') || ind.includes('car') || ind.includes('motor') || ind.includes('workshop') || bName.includes('garage') || bName.includes('auto') || bName.includes('motors') || bName.includes('workshop') || bName.includes('service center')) {
+  if (ind.includes('auto') || ind.includes('garage') || ind.includes('car') || ind.includes('motor') || ind.includes('workshop') || ind.includes('bike') || ind.includes('vehicle') || bName.includes('garage') || bName.includes('auto') || bName.includes('motors') || bName.includes('workshop') || bName.includes('service center')) {
     return 'automotive';
   }
-  if (ind.includes('dining') || ind.includes('restaurant') || ind.includes('food') || ind.includes('cafe') || ind.includes('hotel') || bName.includes('cafe') || bName.includes('restaurant') || bName.includes('kitchen') || bName.includes('dhaba')) {
+  if (ind.includes('dining') || ind.includes('restaurant') || ind.includes('food') || ind.includes('cafe') || ind.includes('hotel') || ind.includes('bakery') || ind.includes('dhaba') || bName.includes('cafe') || bName.includes('restaurant') || bName.includes('kitchen') || bName.includes('dhaba')) {
     return 'dining';
   }
-  if (ind.includes('retail') || ind.includes('shopping') || ind.includes('store') || ind.includes('market') || ind.includes('fashion') || bName.includes('store') || bName.includes('mart') || bName.includes('jewellers') || bName.includes('fashion')) {
+  if (ind.includes('retail') || ind.includes('shopping') || ind.includes('store') || ind.includes('market') || ind.includes('fashion') || ind.includes('jewel') || bName.includes('store') || bName.includes('mart') || bName.includes('jewellers') || bName.includes('fashion')) {
     return 'retail';
   }
-  if (ind.includes('corp') || ind.includes('tech') || ind.includes('it') || ind.includes('consult') || ind.includes('software') || ind.includes('media') || ind.includes('agency')) {
+  if (ind.includes('salon') || ind.includes('spa') || ind.includes('beauty') || ind.includes('parlour') || ind.includes('hair') || ind.includes('grooming')) {
+    return 'salon';
+  }
+  if (ind.includes('gym') || ind.includes('fit') || ind.includes('workout') || ind.includes('crossfit') || ind.includes('yoga')) {
+    return 'fitness';
+  }
+  if (ind.includes('edu') || ind.includes('coach') || ind.includes('school') || ind.includes('class') || ind.includes('academy') || ind.includes('institute') || ind.includes('tutor')) {
+    return 'education';
+  }
+  if (ind.includes('real estate') || ind.includes('estate') || ind.includes('architect') || ind.includes('interior') || ind.includes('property') || ind.includes('builder')) {
+    return 'realestate';
+  }
+  if (ind.includes('corp') || ind.includes('tech') || ind.includes('it') || ind.includes('consult') || ind.includes('software') || ind.includes('media') || ind.includes('agency') || ind.includes('law') || ind.includes('legal')) {
     return 'corporate';
   }
   return 'general';
@@ -123,6 +135,7 @@ export const PublicReviewScanner = () => {
   const [isSubmittingDirect, setIsSubmittingDirect] = useState(false);
   const [directSubmitted, setDirectSubmitted] = useState(false);
   const [recentReviews, setRecentReviews] = useState([]);
+  const [recentReviewsHistory, setRecentReviewsHistory] = useState([]);
 
   // Demo Mode State & Countdown
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -424,7 +437,8 @@ export const PublicReviewScanner = () => {
           language: lang,
           serviceName: targetServiceName,
           doctorName: targetDocName,
-          selectedDoctor: matchedDoc || (targetDocName ? { name: targetDocName } : null)
+          selectedDoctor: matchedDoc || (targetDocName ? { name: targetDocName } : null),
+          previousReview: generatedReview || ''
         })
       });
 
@@ -433,6 +447,7 @@ export const PublicReviewScanner = () => {
         if (data.reviewText) {
           setGeneratedReview(data.reviewText);
           setEditedReview(data.reviewText);
+          setRecentReviewsHistory((prev) => [data.reviewText, ...prev.filter(p => p !== data.reviewText)].slice(0, 8));
           setIsGenerating(false);
           try {
             navigator.clipboard.writeText(data.reviewText);
@@ -443,7 +458,7 @@ export const PublicReviewScanner = () => {
       }
     } catch (e) {}
 
-    // Client-side fallback from industry-scoped 70+ review pool
+    // Client-side fallback from diverse multi-industry review pool
     setTimeout(() => {
       const cat = getIndustryCategory(industry, bName);
       const catTemplates = reviewsPoolData?.templates?.[cat] || reviewsPoolData?.templates?.general || {};
@@ -452,32 +467,41 @@ export const PublicReviewScanner = () => {
       if (lang === 'मराठी') langKey = 'marathi';
       else if (lang === 'हिंदी') langKey = 'hindi';
 
-      const pool = catTemplates[langKey] || catTemplates.english || [];
-      const randomIndex = Math.floor(Math.random() * (pool.length || 1));
-      let templateStr = pool[randomIndex] || `Outstanding experience with ${bName}! ⭐⭐⭐⭐⭐`;
-
-      let displayService = targetServiceName;
-      if (chip === 'ALL') {
-        displayService = lang === 'मराठी' ? 'उपचार व वैद्यकीय सेवा' : lang === 'हिंदी' ? 'उपचार व परामर्श' : 'medical care and treatment';
+      const pool = catTemplates[langKey] || catTemplates.english || reviewsPoolData?.templates?.general?.[langKey] || [];
+      
+      // Filter out templates that were recently used to ensure unique structure every time
+      let eligible = pool.filter(t => !recentReviewsHistory.includes(t) && t !== generatedReview);
+      if (eligible.length === 0) {
+        eligible = pool.filter(t => t !== generatedReview);
+        if (eligible.length === 0) eligible = pool;
       }
 
-      let displayDoc = targetDocName || (lang === 'मराठी' ? 'तज्ज्ञ डॉक्टर' : lang === 'हिंदी' ? 'अनुभवी डॉक्टर' : 'the doctor');
+      const randomIndex = Math.floor(Math.random() * (eligible.length || 1));
+      let templateStr = eligible[randomIndex] || `Great experience with ${bName}! Highly recommended.`;
+
+      let displayService = targetServiceName;
+      if (chip === 'ALL' || !displayService) {
+        displayService = lang === 'मराठी' ? 'उत्तम सेवा व सहकार्य' : lang === 'हिंदी' ? 'उत्कृष्ट सेवा व परामर्श' : 'exceptional service';
+      }
+
+      let displayDoc = targetDocName || (cat === 'hospital' ? (lang === 'मराठी' ? 'तज्ज्ञ डॉक्टर' : lang === 'हिंदी' ? 'अनुभवी डॉक्टर' : 'the doctor') : '');
 
       let text = templateStr
         .replace(/{businessName}/g, bName)
-        .replace(/{doctorName}/g, displayDoc)
+        .replace(/{doctorName}/g, displayDoc || (lang === 'मराठी' ? 'तज्ज्ञ' : lang === 'हिंदी' ? 'विशेषज्ञ' : 'the specialist'))
         .replace(/{serviceName}/g, displayService)
-        .replace(/{phrase}/g, 'exceptional care');
+        .replace(/{phrase}/g, 'exceptional service');
 
       setGeneratedReview(text);
       setEditedReview(text);
+      setRecentReviewsHistory((prev) => [templateStr, ...prev.filter(p => p !== templateStr)].slice(0, 8));
       setIsGenerating(false);
 
       try {
         navigator.clipboard.writeText(text);
         setCopied(true);
       } catch (e) {}
-    }, 280);
+    }, 250);
   };
 
   const handleChipSelect = (chip) => {
@@ -861,10 +885,22 @@ export const PublicReviewScanner = () => {
                 </div>
               </div>
 
-              {/* Sparkle Generating Header */}
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#008768]">
-                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                <span>{isGenerating ? 'GENERATING...' : 'AI REVIEW READY'}</span>
+              {/* Sparkle Generating Header + Regenerate Button */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#008768]">
+                  <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                  <span>{isGenerating ? 'GENERATING...' : 'AI REVIEW READY'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => craftDynamicReview(selectedChip, selectedLanguage, rating)}
+                  disabled={isGenerating}
+                  className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-[#008768] hover:text-[#00523f] bg-[#edf8f5] hover:bg-[#d8f0ea] px-2.5 py-1 rounded-lg border border-[#cbe6dd] transition-all cursor-pointer shadow-xs"
+                  title="Generate another unique review"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
+                  <span>Try Different Style</span>
+                </button>
               </div>
 
               {/* Review Display / Edit Textarea */}
@@ -1046,10 +1082,26 @@ export const PublicReviewScanner = () => {
         {/* Language & Generated Review Section */}
         <div className="space-y-3 pt-2 bg-slate-900/60 p-5 rounded-2xl border border-slate-700">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold text-indigo-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isGenerating ? 'GENERATING...' : 'AI REVIEW READY'}</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-indigo-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isGenerating ? 'GENERATING...' : 'AI REVIEW READY'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const chosenValues = Object.values(answers).filter(Boolean);
+                  const servicePhrase = chosenValues.join(', ') || 'service';
+                  craftDynamicReview(servicePhrase, selectedLanguage, rating);
+                }}
+                disabled={isGenerating}
+                className="flex items-center gap-1 text-[11px] font-mono font-semibold text-indigo-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition-all cursor-pointer shadow-xs"
+                title="Generate another unique review"
+              >
+                <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
+                <span>Try Different Style</span>
+              </button>
+            </div>
 
             {/* Language Switcher */}
             <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
