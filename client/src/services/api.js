@@ -286,6 +286,10 @@ export const api = {
       fetch(`${API_BASE}/scanners`, {
         headers: getAuthHeaders(),
       }).then(handleResponse),
+    getById: (id) =>
+      fetch(`${API_BASE}/scanners/${id}`, {
+        headers: getAuthHeaders(),
+      }).then(handleResponse),
     getBySlug: (slug) =>
       fetch(`${API_BASE}/scanners/public/${slug}`).then(handleResponse),
     create: (scannerData) =>

@@ -1,9 +1,11 @@
+const mongoose = require('mongoose');
 const Scanner = require('../models/Scanner');
 const Client = require('../models/Client');
 const ActivityLog = require('../models/ActivityLog');
 const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const reviewsPoolData = require('../data/reviewsPool.json');
+const { generateInputBasedReview } = require('../utils/reviewGenerator');
 
 // Helper to determine exact industry category
 function getIndustryCategory(industryStr, businessNameStr) {
@@ -256,9 +258,9 @@ exports.getScannerBySlug = async (req, res, next) => {
       demoRemainingSeconds = Math.max(0, Math.floor((new Date(scanner.demoExpiresAt).getTime() - Date.now()) / 1000));
     }
 
-    // Ensure questions array is populated
-    if (!scannerObj.questions || scannerObj.questions.length === 0) {
-      scannerObj.questions = defaultQuestions;
+    // Ensure questions array is valid
+    if (!Array.isArray(scannerObj.questions)) {
+      scannerObj.questions = [];
     }
 
     // Increment scan counter
@@ -301,7 +303,8 @@ exports.generatePublicReview = async (req, res, next) => {
       selectedDoctor,
       selectedService,
       serviceName,
-      language
+      language,
+      variationIndex
     } = req.body;
 
     let scanner = await findScannerFlexible(slug);
@@ -324,30 +327,21 @@ exports.generatePublicReview = async (req, res, next) => {
     }
 
     const businessName = scanner.businessName || scanner.name || scanner.clientName || 'this business';
-    
-    let answerPhrases = [];
-    if (Array.isArray(answers)) {
-      answerPhrases = answers.map(a => a.answer || a.value || a).filter(Boolean);
-    } else if (answers && typeof answers === 'object') {
-      answerPhrases = Object.values(answers).filter(Boolean);
-    }
-
-    const phraseStr = answerPhrases.length > 0 ? answerPhrases.join(' and ') : 'the outstanding medical care and supportive staff';
     const numRating = Number(rating) || 5;
 
-    const targetDocName = doctorName || selectedDoctor?.name || '';
+    const targetDocName = doctorName || selectedDoctor?.name || scanner.doctorName || (scanner.doctors?.[0]?.name) || '';
     const targetDocDept = doctorDepartment || selectedDoctor?.department || '';
     const targetService = serviceName || selectedService || '';
 
-    // Draw dynamic review with variation from 70+ unique review pool
-    const reviewText = generateDynamicReviewFromPool({
-      language,
-      industry: scanner.industry,
+    // Generate factual, polished review derived directly from customer answers
+    const reviewText = generateInputBasedReview({
       rating: numRating,
+      language,
       businessName,
       doctorName: targetDocName,
       serviceName: targetService,
-      phraseStr
+      answers,
+      variationIndex: Number(variationIndex) || 0
     });
 
     // Update scanner metrics
@@ -439,7 +433,7 @@ exports.submitPublicReview = async (req, res, next) => {
     const businessName = scanner.businessName || scanner.name || scanner.clientName || 'ASN Partner Business';
     const clientName = scanner.clientName || businessName;
 
-    const finalDocName = (doctorName || selectedDoctor?.name || '').trim();
+    const finalDocName = (doctorName || selectedDoctor?.name || scanner.doctorName || (scanner.doctors?.[0]?.name) || '').trim();
     const finalDocDept = (doctorDepartment || selectedDoctor?.department || '').trim();
     const finalDocId = (doctorId || selectedDoctor?.id || '').trim();
 
@@ -547,7 +541,26 @@ exports.createScanner = async (req, res, next) => {
     const businessName = (data.businessName || data.clientName || data.name || 'Review Scanner').trim();
     const clientName = (data.clientName || businessName).trim();
     const name = (data.name || businessName).trim();
-    const googleReviewUrl = (data.googleReviewUrl || data.googleUrl || '').trim();
+    let placeId = (data.placeId || '').trim();
+    let googleUrl = (data.googleUrl || '').trim();
+    let googleReviewUrl = (data.googleReviewUrl || '').trim();
+
+    if (placeId && (!googleReviewUrl || !googleReviewUrl.includes('writereview'))) {
+      googleReviewUrl = `https://search.google.com/local/writereview?placeid=${placeId}`;
+    } else if (!googleReviewUrl && googleUrl) {
+      const pMatch = googleUrl.match(/[?&](?:placeid|place_id)=([^&#]+)/i) || googleUrl.match(/(ChIJ[a-zA-Z0-9_-]{15,})/);
+      if (pMatch && pMatch[1]) {
+        placeId = pMatch[1];
+        googleReviewUrl = `https://search.google.com/local/writereview?placeid=${pMatch[1]}`;
+      } else {
+        googleReviewUrl = googleUrl;
+      }
+    } else if (googleReviewUrl && !placeId) {
+      const pMatch = googleReviewUrl.match(/[?&](?:placeid|place_id)=([^&#]+)/i) || googleReviewUrl.match(/(ChIJ[a-zA-Z0-9_-]{15,})/);
+      if (pMatch && pMatch[1]) {
+        placeId = pMatch[1];
+      }
+    }
 
     // Generate clean slug
     let baseSlug = (data.slug || name || businessName || 'scanner')
@@ -590,11 +603,12 @@ exports.createScanner = async (req, res, next) => {
       clientName,
       name,
       placeName: data.placeName || name,
+      placeId,
+      googleUrl: googleUrl || googleReviewUrl || (isDemo ? 'https://search.google.com/local/writereview?placeid=ChIJDemo2026' : ''),
       googleReviewUrl: googleReviewUrl || (isDemo ? 'https://search.google.com/local/writereview?placeid=ChIJDemo2026' : ''),
-      googleUrl: googleReviewUrl || (isDemo ? 'https://search.google.com/local/writereview?placeid=ChIJDemo2026' : ''),
       slug,
       autoPauseAt,
-      questions: Array.isArray(data.questions) && data.questions.length > 0 ? data.questions : defaultQuestions
+      questions: Array.isArray(data.questions) ? data.questions : []
     });
 
     if (scanner.clientId) {
@@ -634,6 +648,36 @@ exports.createScanner = async (req, res, next) => {
   }
 };
 
+// @desc    Get single scanner by ID or slug (Admin)
+// @route   GET /api/scanners/:id
+exports.getScannerById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let scanner = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      scanner = await Scanner.findById(id);
+    }
+    if (!scanner) {
+      scanner = await Scanner.findOne({ slug: id });
+    }
+    if (!scanner) {
+      scanner = await Scanner.findOne({
+        $or: [
+          { clientId: id },
+          { clientName: new RegExp(`^${id}$`, 'i') },
+          { name: new RegExp(`^${id}$`, 'i') }
+        ]
+      });
+    }
+    if (!scanner) {
+      return res.status(404).json({ success: false, message: 'Scanner not found.' });
+    }
+    res.status(200).json({ success: true, data: scanner });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @desc    Update review scanner
 // @route   PUT /api/scanners/:id
 exports.updateScanner = async (req, res, next) => {
@@ -648,9 +692,30 @@ exports.updateScanner = async (req, res, next) => {
       data.name = (data.name || data.businessName).trim();
     }
 
-    if (data.googleReviewUrl || data.googleUrl) {
-      data.googleReviewUrl = (data.googleReviewUrl || data.googleUrl || '').trim();
-      data.googleUrl = data.googleReviewUrl;
+    if (data.placeId !== undefined || data.googleUrl !== undefined || data.googleReviewUrl !== undefined) {
+      let pId = (data.placeId || '').trim();
+      let gUrl = (data.googleUrl || '').trim();
+      let gReviewUrl = (data.googleReviewUrl || '').trim();
+
+      if (pId && (!gReviewUrl || !gReviewUrl.includes('writereview'))) {
+        gReviewUrl = `https://search.google.com/local/writereview?placeid=${pId}`;
+      } else if (!gReviewUrl && gUrl) {
+        const pMatch = gUrl.match(/[?&](?:placeid|place_id)=([^&#]+)/i) || gUrl.match(/(ChIJ[a-zA-Z0-9_-]{15,})/);
+        if (pMatch && pMatch[1]) {
+          pId = pMatch[1];
+          gReviewUrl = `https://search.google.com/local/writereview?placeid=${pMatch[1]}`;
+        } else {
+          gReviewUrl = gUrl;
+        }
+      } else if (gReviewUrl && !pId) {
+        const pMatch = gReviewUrl.match(/[?&](?:placeid|place_id)=([^&#]+)/i) || gReviewUrl.match(/(ChIJ[a-zA-Z0-9_-]{15,})/);
+        if (pMatch && pMatch[1]) {
+          pId = pMatch[1];
+        }
+      }
+      data.placeId = pId;
+      data.googleUrl = gUrl || gReviewUrl;
+      data.googleReviewUrl = gReviewUrl;
     }
 
     if (data.isDemo && data.demoDurationMinutes > 0 && !data.demoExpiresAt) {
@@ -663,10 +728,19 @@ exports.updateScanner = async (req, res, next) => {
       data.autoPauseAt = null;
     }
 
-    const scanner = await Scanner.findByIdAndUpdate(req.params.id, data, {
-      new: true,
-      runValidators: true
-    });
+    let scanner = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      scanner = await Scanner.findByIdAndUpdate(req.params.id, data, {
+        new: true,
+        runValidators: true
+      });
+    }
+    if (!scanner) {
+      scanner = await Scanner.findOneAndUpdate({ slug: req.params.id }, data, {
+        new: true,
+        runValidators: true
+      });
+    }
 
     if (!scanner) {
       return res.status(404).json({ success: false, message: 'Scanner not found' });
@@ -692,7 +766,13 @@ exports.updateScanner = async (req, res, next) => {
 // @route   DELETE /api/scanners/:id
 exports.deleteScanner = async (req, res, next) => {
   try {
-    const scanner = await Scanner.findByIdAndDelete(req.params.id);
+    let scanner = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      scanner = await Scanner.findByIdAndDelete(req.params.id);
+    }
+    if (!scanner) {
+      scanner = await Scanner.findOneAndDelete({ slug: req.params.id });
+    }
     if (!scanner) {
       return res.status(404).json({ success: false, message: 'Scanner not found' });
     }
@@ -761,34 +841,34 @@ exports.generateSuggestions = async (req, res, next) => {
 
     const userRating = rating || 5;
 
-    const opt1 = generateDynamicReviewFromPool({
-      language: 'English',
-      industry: scanner.industry,
+    const opt1 = generateInputBasedReview({
       rating: userRating,
+      language: 'English',
       businessName,
       doctorName: scanner.doctors?.[0]?.name || '',
       serviceName: scanner.hospitalServices?.[0] || '',
-      phraseStr: keyString
+      answers,
+      variationIndex: 0
     });
 
-    const opt2 = generateDynamicReviewFromPool({
-      language: 'English',
-      industry: scanner.industry,
+    const opt2 = generateInputBasedReview({
       rating: userRating,
+      language: 'English',
       businessName,
       doctorName: scanner.doctors?.[1]?.name || scanner.doctors?.[0]?.name || '',
       serviceName: scanner.hospitalServices?.[1] || '',
-      phraseStr: keyString
+      answers,
+      variationIndex: 1
     });
 
-    const opt3 = generateDynamicReviewFromPool({
-      language: 'English',
-      industry: scanner.industry,
+    const opt3 = generateInputBasedReview({
       rating: userRating,
+      language: 'English',
       businessName,
       doctorName: scanner.doctors?.[2]?.name || scanner.doctors?.[0]?.name || '',
       serviceName: scanner.hospitalServices?.[2] || '',
-      phraseStr: keyString
+      answers,
+      variationIndex: 2
     });
 
     const suggestions = [

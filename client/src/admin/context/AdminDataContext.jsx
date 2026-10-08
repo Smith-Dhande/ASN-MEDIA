@@ -794,18 +794,24 @@ export const AdminDataProvider = ({ children }) => {
   };
 
   const updateScanner = async (id, updatedFields) => {
+    let serverUpdated = null;
     try {
-      await api.scanners.update(id, updatedFields);
+      const res = await api.scanners.update(id, updatedFields);
+      if (res?.data) {
+        serverUpdated = normalizeDoc(res.data);
+      }
     } catch (err) {
       console.error('Failed to update scanner on server:', err);
+      throw err;
     }
     setData((prev) => {
       const updatedScanners = (prev.reviewScanners || []).map((s) =>
-        s.id === id || s._id === id ? { ...s, ...updatedFields } : s
+        s.id === id || s._id === id ? (serverUpdated ? { ...s, ...serverUpdated } : { ...s, ...updatedFields }) : s
       );
       const updated = { ...prev, reviewScanners: updatedScanners };
       return { ...updated, dashboardMetrics: computeMetrics(updated) };
     });
+    return serverUpdated || { id, ...updatedFields };
   };
 
   const regenerateScannerCode = async (id) => {
@@ -821,6 +827,7 @@ export const AdminDataProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Failed to regenerate scanner on server:', err);
+      throw err;
     }
   };
 
@@ -829,6 +836,7 @@ export const AdminDataProvider = ({ children }) => {
       await api.scanners.delete(id);
     } catch (err) {
       console.error('Failed to delete scanner on server:', err);
+      throw err;
     }
     setData((prev) => {
       const updatedScanners = (prev.reviewScanners || []).filter((s) => s.id !== id && s._id !== id);

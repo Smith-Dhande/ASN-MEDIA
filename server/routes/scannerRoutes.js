@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getScanners,
+  getScannerById,
   getScannerBySlug,
   generatePublicReview,
   trackPublicEvent,
@@ -36,6 +37,7 @@ router.route('/public/:slug/events')
   .post(trackPublicEvent);
 
 router.route('/:id')
+  .get(protect, getScannerById)
   .put(protect, updateScanner)
   .patch(protect, updateScanner)
   .delete(protect, deleteScanner);

@@ -1209,5 +1209,127 @@
         "अतिशय नम्र, कुशल आणि अनुभवी कर्मचारी {businessName} मध्ये कार्यरत आहेत. वाजवी खर्चात उच्च दर्जाची सेवा आणि उत्तम मार्गदर्शन लाभले. ५ स्टार सेवा! सर्वांना नक्की शिफारस करेन. ⭐⭐⭐⭐⭐"
       ]
     }
+  },
+  "components": {
+    "openings": {
+      "english": {
+        "3": [
+          "I recently visited {businessName}.",
+          "Sharing my honest feedback regarding {businessName}.",
+          "My visit to {businessName} was decent overall."
+        ],
+        "4": [
+          "I had a very good experience at {businessName}.",
+          "My visit to {businessName} went smoothly.",
+          "I recently visited {businessName} and was quite pleased overall.",
+          "Good experience at {businessName} today."
+        ],
+        "5": [
+          "I had a truly wonderful experience at {businessName}.",
+          "Visiting {businessName} was a very positive experience.",
+          "I had an exceptional experience at {businessName}.",
+          "My visit to {businessName} went extremely well.",
+          "I am very happy with my visit to {businessName}."
+        ],
+        "12": [
+          "Sharing my feedback regarding my visit to {businessName}.",
+          "I visited {businessName} recently."
+        ]
+      },
+      "hindi": {
+        "3": [
+          "{businessName} में मेरा अनुभव सामान्य रहा।",
+          "{businessName} की व्यवस्था ठीक-ठाक रही।"
+        ],
+        "4": [
+          "{businessName} में मेरा अनुभव काफी अच्छा रहा।",
+          "{businessName} की सेवाएं काफी संतोषजनक रहीं।"
+        ],
+        "5": [
+          "{businessName} में मेरा अनुभव बहुत ही शानदार रहा।",
+          "{businessName} की व्यवस्था और सेवाएं मुझे बहुत पसंद आईं।",
+          "{businessName} में जाना हमारे लिए एक बेहतरीन अनुभव रहा।"
+        ],
+        "12": [
+          "{businessName} के संबंध में मैं अपना अनुभव साझा कर रहा हूँ।"
+        ]
+      },
+      "marathi": {
+        "3": [
+          "{businessName} मधील माझा अनुभव सर्वसाधारण राहिला.",
+          "{businessName} ची व्यवस्था ठीक-ठाक होती."
+        ],
+        "4": [
+          "{businessName} मधील माझा अनुभव खूप चांगला राहिला.",
+          "{businessName} ची सेवा समाधानकारक होती."
+        ],
+        "5": [
+          "{businessName} मधील माझा अनुभव अत्यंत उत्तम आणि समाधानकारक राहिला.",
+          "{businessName} ची व्यवस्था आणि सेवा मला मनापासून आवडली.",
+          "{businessName} ला भेट दिल्यानंतर अतिशय आनंद झाला."
+        ],
+        "12": [
+          "{businessName} संदर्भात मी माझा अनुभव मांडत आहे."
+        ]
+      }
+    },
+    "closings": {
+      "english": {
+        "3": [
+          "Overall, the experience was satisfactory.",
+          "A decent visit overall.",
+          "Reasonable experience with room for a few improvements."
+        ],
+        "4": [
+          "Overall, a very positive and satisfying experience.",
+          "I am happy with how everything went.",
+          "Overall, good service and a pleasant visit."
+        ],
+        "5": [
+          "Overall, I am thoroughly satisfied with the experience.",
+          "Truly a 5-star experience all around.",
+          "I am extremely pleased with the service and would gladly recommend them.",
+          "Everything was handled with utmost professionalism."
+        ],
+        "12": [
+          "Hoping management takes note of this feedback for future improvements.",
+          "There is noticeable scope for improvement."
+        ]
+      },
+      "hindi": {
+        "3": [
+          "कुल मिलाकर अनुभव ठीक-ठाक रहा।"
+        ],
+        "4": [
+          "कुल मिलाकर एक अच्छा और संतोषजनक अनुभव रहा।",
+          "सेवाएं काफी अच्छी रहीं।"
+        ],
+        "5": [
+          "कुल मिलाकर यहाँ की सेवाएं बहुत ही बेहतरीन रहीं, बहुत धन्यवाद!",
+          "समग्र अनुभव बहुत ही सुखद और संतोषजनक था।",
+          "मैं यहाँ की सुविधाओं से पूरी तरह संतुष्ट हूँ।"
+        ],
+        "12": [
+          "उम्मीद है कि भविष्य में सेवाओं में सुधार किया जाएगा।"
+        ]
+      },
+      "marathi": {
+        "3": [
+          "एकंदरीत अनुभव बरा राहिला."
+        ],
+        "4": [
+          "एकंदरीत एक चांगला आणि सुखद अनुभव आला.",
+          "सेवा बरीच चांगली होती."
+        ],
+        "5": [
+          "एकंदरीत येथील सर्व सेवा उत्कृष्ट आणि प्रशंसनीय आहे, धन्यवाद!",
+          "संपूर्ण अनुभव अतिशय समाधानकारक आणि सुखद राहिला.",
+          "मी इथल्या सेवेबद्दल पूर्णपणे समाधानी आहे."
+        ],
+        "12": [
+          "भविष्यात या त्रुटींमध्ये सुधारणा व्हावी ही अपेक्षा."
+        ]
+      }
+    }
   }
 }

@@ -32,6 +32,7 @@ const scannerSchema = new mongoose.Schema({
   placeId: { type: String, default: '' },
   slug: { type: String, required: true, unique: true },
   industry: { type: String, default: 'General Business' },
+  doctorName: { type: String, default: '' },
   doctors: [doctorSchema],
   hospitalServices: [{ type: String }],
   googleUrl: { type: String, default: '' },

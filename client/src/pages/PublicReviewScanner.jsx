@@ -1,19 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
   Star,
-  Sparkles,
-  CheckCircle2,
+  Check,
   Copy,
   ExternalLink,
   RefreshCw,
-  AlertCircle,
-  Clock,
-  Lock,
-  ShieldAlert
+  ChevronDown,
+  Clock
 } from 'lucide-react';
 import { mockData } from '../admin/data/mockData';
 import reviewsPoolData from '../data/reviewsPool.json';
+import { generateInputBasedReview } from '../utils/reviewGenerator';
 
 const DEFAULT_QUESTIONS = [
   {
@@ -73,11 +71,16 @@ const DEFAULT_HOSPITAL_CHIPS = [
   'FLUORESCEIN ANGIOGRAPHY'
 ];
 
+const LANGUAGES = ['English', 'हिंदी', 'मराठी'];
+
+// Minimum time the "generating" state stays visible
+const MIN_GENERATING_MS = 2000;
+
 // Helper to determine exact industry category on client
 function getIndustryCategory(industryStr, businessNameStr) {
   const ind = (industryStr || '').toLowerCase();
   const bName = (businessNameStr || '').toLowerCase();
-  
+
   if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
     return 'hospital';
   }
@@ -95,6 +98,73 @@ function getIndustryCategory(industryStr, businessNameStr) {
   }
   return 'general';
 }
+
+// "CATARACT SURGERY" -> "Cataract surgery", "DR. HIMANSHU DESHMUKH" -> "Dr. Himanshu Deshmukh" (display only)
+function toDisplayCase(str) {
+  const s = String(str || '').trim();
+  if (!s) return s;
+  const lower = s.toLowerCase();
+  if (lower.startsWith('dr.')) {
+    return lower.replace(/\b([a-z])/g, (c) => c.toUpperCase());
+  }
+  return (lower.charAt(0).toUpperCase() + lower.slice(1)).replace(/\(oct\)/i, '(OCT)');
+}
+
+// ------------------------------------------------------------
+// Small presentational pieces (kept outside the page component)
+// ------------------------------------------------------------
+const FIELD_BASE =
+  'w-full bg-white border border-[#cfd4d0] text-[15px] text-slate-900 rounded-md px-3.5 py-3 focus:outline-none focus:border-[#0f5f4a] focus:ring-2 focus:ring-[#0f5f4a]/15 transition-colors';
+
+const Field = ({ label, hint, children }) => (
+  <div className="space-y-1.5">
+    <div className="flex items-baseline justify-between gap-3">
+      <label className="text-sm font-medium text-slate-800">{label}</label>
+      {hint && <span className="text-xs text-slate-500">{hint}</span>}
+    </div>
+    {children}
+  </div>
+);
+
+const SelectBox = ({ value, onChange, children, ariaLabel }) => (
+  <div className="relative">
+    <select
+      value={value}
+      onChange={onChange}
+      aria-label={ariaLabel}
+      className={`${FIELD_BASE} appearance-none pr-10 cursor-pointer truncate`}
+    >
+      {children}
+    </select>
+    <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+  </div>
+);
+
+const Shell = ({ children, toast }) => (
+  <div className="min-h-screen bg-[#f3f4f2] text-slate-900 font-body flex flex-col items-center px-4 py-8 sm:py-14 selection:bg-[#0f5f4a] selection:text-white">
+    {toast && (
+      <div
+        role="status"
+        className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm px-4 py-2.5 rounded-md flex items-center gap-2"
+      >
+        <Check className="w-4 h-4" />
+        <span>Review copied. Opening Google…</span>
+      </div>
+    )}
+    {children}
+  </div>
+);
+
+const Footer = () => (
+  <div className="mt-auto pt-10 flex items-center justify-center gap-5 text-xs text-slate-500">
+    <Link to="/terms" className="hover:text-slate-900 hover:underline underline-offset-2">
+      Terms &amp; conditions
+    </Link>
+    <Link to="/terms" className="hover:text-slate-900 hover:underline underline-offset-2">
+      Privacy policy
+    </Link>
+  </div>
+);
 
 export const PublicReviewScanner = () => {
   const { slug } = useParams();
@@ -133,6 +203,8 @@ export const PublicReviewScanner = () => {
   const [autoRedirectDuration, setAutoRedirectDuration] = useState(0);
   const [copied, setCopied] = useState(true);
   const [redirectNotice, setRedirectNotice] = useState(false);
+  const [variationIndex, setVariationIndex] = useState(0);
+  const generationId = useRef(0); // latest request wins
 
   useEffect(() => {
     fetchScanner();
@@ -158,14 +230,14 @@ export const PublicReviewScanner = () => {
   }, [isDemoMode, demoRemainingSeconds]);
 
   const normalizeScanner = (rawScanner, targetSlug) => {
-    const rawQuestions = rawScanner.questions && rawScanner.questions.length > 0 ? rawScanner.questions : DEFAULT_QUESTIONS;
+    const rawQuestions = Array.isArray(rawScanner.questions) ? rawScanner.questions : DEFAULT_QUESTIONS;
     const isDemo = Boolean(rawScanner.isDemo || rawScanner.clientId === 'demo-preview' || (rawScanner.name && rawScanner.name.toLowerCase().includes('demo')));
-    
+
     // Check if slug or name implies Hospital
     const cleanSlug = String(targetSlug || '').toLowerCase();
     const isHospitalSlug = cleanSlug.includes('hospital') || cleanSlug.includes('eye') || cleanSlug.includes('deshmukh') || cleanSlug.includes('clinic') || cleanSlug.includes('care');
     const isAutoSlug = cleanSlug.includes('garage') || cleanSlug.includes('auto') || cleanSlug.includes('motor') || cleanSlug.includes('car');
-    
+
     let industry = rawScanner.industry;
     if (!industry || industry === 'General Business') {
       if (isHospitalSlug) industry = 'Hospital / Healthcare';
@@ -248,7 +320,7 @@ export const PublicReviewScanner = () => {
           setRecentReviews(json.data);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchScanner = async () => {
@@ -262,19 +334,19 @@ export const PublicReviewScanner = () => {
       setDemoRemainingSeconds(normalized.demoRemainingSeconds);
       setGoogleUrl(normalized.googleReviewUrl);
       setAutoRedirectDuration(normalized.redirectTimer !== undefined ? normalized.redirectTimer : 0);
-      initializeAnswers(normalized.questions);
-      
+      const initAns = initializeAnswers(normalized.questions);
+
       // Auto-select first available doctor if present
       if (normalized.doctors && normalized.doctors.length > 0) {
         const activeDoc = normalized.doctors.find(d => d.available !== false) || normalized.doctors[0];
         setSelectedDoctor(activeDoc || null);
       }
-      
+
       // Set initial chip
       const availableDocNames = (normalized.doctors || [])
         .filter(d => d.available !== false && (d.name || '').trim())
         .map(d => d.name.trim().toUpperCase().startsWith('DR.') ? d.name.trim().toUpperCase() : `DR. ${d.name.trim().toUpperCase()}`);
-      
+
       const availableServices = (normalized.hospitalServices || [])
         .filter(s => typeof s === 'string' && s.trim() && s.trim().toUpperCase() !== 'ALL' && !s.trim().toUpperCase().startsWith('DR.'))
         .map(s => s.trim().toUpperCase());
@@ -284,7 +356,7 @@ export const PublicReviewScanner = () => {
 
       setLoading(false);
       if (!normalized.isExpired && !normalized.isPaused) {
-        craftDynamicReview(initialChip, selectedLanguage, rating, normalized);
+        craftDynamicReview(initialChip, selectedLanguage, rating, normalized, 0, initAns);
       }
     };
 
@@ -307,7 +379,7 @@ export const PublicReviewScanner = () => {
             return;
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     // 2. Fallback to LocalStorage and In-Memory Mock Data
@@ -320,7 +392,7 @@ export const PublicReviewScanner = () => {
           if (Array.isArray(parsed.reviewScanners)) {
             candidateScanners = [...parsed.reviewScanners];
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       if (Array.isArray(mockData.reviewScanners)) {
@@ -351,7 +423,7 @@ export const PublicReviewScanner = () => {
         applyNormalizedScanner(normalized);
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 3. Fallback: Generate a smart branded scanner for this link slug
     const smartFallback = normalizeScanner({}, targetSlug);
@@ -359,7 +431,7 @@ export const PublicReviewScanner = () => {
   };
 
   const initializeAnswers = (questionsList) => {
-    if (!questionsList) return;
+    if (!questionsList) return {};
     const initial = {};
     questionsList.forEach((q) => {
       if (q.options && q.options.length > 0) {
@@ -369,15 +441,33 @@ export const PublicReviewScanner = () => {
       }
     });
     setAnswers(initial);
+    return initial;
   };
 
-  // Dynamic Multi-Language AI Crafting for Reviews
-  const craftDynamicReview = async (chip, lang, stars, currentScanner = scanner) => {
+  // Dynamic Multi-Language Input-Based Crafting for Reviews
+  const craftDynamicReview = async (
+    chip = selectedChip,
+    lang = selectedLanguage,
+    stars = rating,
+    currentScanner = scanner,
+    explicitVariation = null,
+    currentAnswers = null
+  ) => {
+    const requestId = ++generationId.current;
+    const startedAt = Date.now();
     setIsGenerating(true);
+
+    const activeVariation = explicitVariation !== null ? explicitVariation : variationIndex;
+    const activeAnswers = currentAnswers !== null ? currentAnswers : answers;
+
+    // Keep the loading state on screen for at least MIN_GENERATING_MS
+    const waitForMinimum = () =>
+      new Promise((resolve) =>
+        setTimeout(resolve, Math.max(0, MIN_GENERATING_MS - (Date.now() - startedAt)))
+      );
     const targetScanner = currentScanner || scanner;
     const bName = targetScanner?.clientName || targetScanner?.businessName || 'Our Business';
-    const industry = targetScanner?.industry || 'Hospital / Healthcare';
-    
+
     // Check if the chip is a doctor
     const cleanChip = (chip || '').replace(/^DR\.\s*/i, '').trim().toUpperCase();
     const matchedDoc = (targetScanner?.doctors || []).find(d => {
@@ -386,15 +476,15 @@ export const PublicReviewScanner = () => {
     });
 
     const isDocChip = chip && (
-      chip.toUpperCase().startsWith('DR.') || 
+      chip.toUpperCase().startsWith('DR.') ||
       Boolean(matchedDoc)
     );
-    
+
     let targetDocName = '';
     let targetServiceName = '';
 
     if (isDocChip) {
-      targetDocName = matchedDoc?.name 
+      targetDocName = matchedDoc?.name
         ? (matchedDoc.name.toUpperCase().startsWith('DR.') ? matchedDoc.name : `Dr. ${matchedDoc.name}`)
         : (chip.toUpperCase().startsWith('DR.') ? chip : `Dr. ${chip}`);
       targetServiceName = matchedDoc?.department || 'consultation & treatment';
@@ -412,8 +502,12 @@ export const PublicReviewScanner = () => {
       if (targetDocName && !targetDocName.toUpperCase().startsWith('DR.')) {
         targetDocName = `Dr. ${targetDocName}`;
       }
-      targetServiceName = 'comprehensive healthcare & consultation';
+      targetServiceName = '';
     }
+
+    const formattedAnswers = Object.entries(activeAnswers || {})
+      .map(([q, a]) => ({ question: q, answer: a }))
+      .filter(item => item.answer && String(item.answer).trim());
 
     try {
       const res = await fetch(`/api/scanners/public/${encodeURIComponent(slug || targetScanner?.slug || 'scanner')}/generate-review`, {
@@ -424,66 +518,56 @@ export const PublicReviewScanner = () => {
           language: lang,
           serviceName: targetServiceName,
           doctorName: targetDocName,
-          selectedDoctor: matchedDoc || (targetDocName ? { name: targetDocName } : null)
+          selectedDoctor: matchedDoc || (targetDocName ? { name: targetDocName } : null),
+          answers: formattedAnswers,
+          variationIndex: activeVariation
         })
       });
 
       if (res.ok) {
         const data = await res.json();
         if (data.reviewText) {
+          await waitForMinimum();
+          if (requestId !== generationId.current) return;
           setGeneratedReview(data.reviewText);
           setEditedReview(data.reviewText);
           setIsGenerating(false);
           try {
             navigator.clipboard.writeText(data.reviewText);
             setCopied(true);
-          } catch (e) {}
+          } catch (e) { }
           return;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
-    // Client-side fallback from industry-scoped 70+ review pool
-    setTimeout(() => {
-      const cat = getIndustryCategory(industry, bName);
-      const catTemplates = reviewsPoolData?.templates?.[cat] || reviewsPoolData?.templates?.general || {};
-      
-      let langKey = 'english';
-      if (lang === 'मराठी') langKey = 'marathi';
-      else if (lang === 'हिंदी') langKey = 'hindi';
+    // Client-side fallback from generic input-based review generator
+    await waitForMinimum();
+    if (requestId !== generationId.current) return;
 
-      const pool = catTemplates[langKey] || catTemplates.english || [];
-      const randomIndex = Math.floor(Math.random() * (pool.length || 1));
-      let templateStr = pool[randomIndex] || `Outstanding experience with ${bName}! ⭐⭐⭐⭐⭐`;
+    const fallbackReview = generateInputBasedReview({
+      rating: stars,
+      language: lang,
+      businessName: bName,
+      doctorName: targetDocName,
+      serviceName: targetServiceName,
+      answers: formattedAnswers,
+      variationIndex: activeVariation
+    });
 
-      let displayService = targetServiceName;
-      if (chip === 'ALL') {
-        displayService = lang === 'मराठी' ? 'उपचार व वैद्यकीय सेवा' : lang === 'हिंदी' ? 'उपचार व परामर्श' : 'medical care and treatment';
-      }
+    setGeneratedReview(fallbackReview);
+    setEditedReview(fallbackReview);
+    setIsGenerating(false);
 
-      let displayDoc = targetDocName || (lang === 'मराठी' ? 'तज्ज्ञ डॉक्टर' : lang === 'हिंदी' ? 'अनुभवी डॉक्टर' : 'the doctor');
-
-      let text = templateStr
-        .replace(/{businessName}/g, bName)
-        .replace(/{doctorName}/g, displayDoc)
-        .replace(/{serviceName}/g, displayService)
-        .replace(/{phrase}/g, 'exceptional care');
-
-      setGeneratedReview(text);
-      setEditedReview(text);
-      setIsGenerating(false);
-
-      try {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-      } catch (e) {}
-    }, 280);
+    try {
+      navigator.clipboard.writeText(fallbackReview);
+      setCopied(true);
+    } catch (e) { }
   };
 
   const handleChipSelect = (chip) => {
     setSelectedChip(chip);
-    
-    // Check if the clicked chip corresponds to a doctor in DB
+
     const cleanChip = chip.replace(/^DR\.\s*/i, '').trim().toUpperCase();
     const matchedDoc = (scanner?.doctors || []).find(d => {
       const docName = (d.name || '').replace(/^DR\.\s*/i, '').trim().toUpperCase();
@@ -495,26 +579,30 @@ export const PublicReviewScanner = () => {
     } else if (chip === 'ALL') {
       setSelectedDoctor(null);
     }
-    
-    craftDynamicReview(chip, selectedLanguage, rating);
+
+    craftDynamicReview(chip, selectedLanguage, rating, scanner, variationIndex, answers);
   };
 
   const handleLanguageChange = (lang) => {
     setSelectedLanguage(lang);
-    craftDynamicReview(selectedChip, lang, rating);
+    craftDynamicReview(selectedChip, lang, rating, scanner, variationIndex, answers);
   };
 
   const handleRatingChange = (newRating) => {
     setRating(newRating);
-    craftDynamicReview(selectedChip, selectedLanguage, newRating);
+    craftDynamicReview(selectedChip, selectedLanguage, newRating, scanner, variationIndex, answers);
   };
 
   const handleAnswerChange = (qText, val) => {
     const updated = { ...answers, [qText]: val };
     setAnswers(updated);
-    const chosenValues = Object.values(updated).filter(Boolean);
-    const servicePhrase = chosenValues.join(', ');
-    craftDynamicReview(servicePhrase, selectedLanguage, rating);
+    craftDynamicReview(selectedChip, selectedLanguage, rating, scanner, variationIndex, updated);
+  };
+
+  const handleRegenerate = () => {
+    const nextVar = variationIndex + 1;
+    setVariationIndex(nextVar);
+    craftDynamicReview(selectedChip, selectedLanguage, rating, scanner, nextVar, answers);
   };
 
   const getRatingLabel = (r) => {
@@ -541,7 +629,7 @@ export const PublicReviewScanner = () => {
     try {
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
-    } catch (e) {}
+    } catch (e) { }
 
     // Record interaction metric
     try {
@@ -550,7 +638,7 @@ export const PublicReviewScanner = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventType: 'GOOGLE_CLICKED', rating, metadata: { selectedChip, selectedLanguage } })
       });
-    } catch (e) {}
+    } catch (e) { }
 
     // Open Google Review destination in a clean modal/window
     const targetUrl = googleUrl || scanner?.googleReviewUrl || 'https://search.google.com';
@@ -604,13 +692,14 @@ export const PublicReviewScanner = () => {
     }
   };
 
+  // ==========================================
+  // LOADING
+  // ==========================================
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f4f3] flex flex-col items-center justify-center p-6 text-[#0d594b] font-body">
-        <RefreshCw className="w-10 h-10 animate-spin mb-4 text-[#008768]" />
-        <p className="font-mono text-xs tracking-widest uppercase font-bold text-[#0d594b]">
-          Loading Review Experience...
-        </p>
+      <div className="min-h-screen bg-[#f3f4f2] flex flex-col items-center justify-center p-6 text-slate-600 font-body">
+        <RefreshCw className="w-5 h-5 animate-spin mb-3 text-[#0f5f4a]" />
+        <p className="text-sm">Loading…</p>
       </div>
     );
   }
@@ -631,83 +720,58 @@ export const PublicReviewScanner = () => {
 
   if (isScannerExpired) {
     return (
-      <div className="min-h-screen bg-[#090A0F] text-[#F3F4F6] font-body flex flex-col justify-center items-center p-4 sm:p-8">
-        <div className="w-full max-w-md bg-[#12131A] border border-red-500/40 rounded-[28px] p-6 sm:p-8 shadow-2xl text-center space-y-6 relative overflow-hidden">
-          
-          {/* Glowing background halo */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-500/15 rounded-full blur-3xl pointer-events-none" />
+      <Shell>
+        <div className="w-full max-w-md my-auto">
+          <div className="bg-white border border-[#d9ddd9] rounded-xl p-7 sm:p-8 space-y-6">
+            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+              <Clock className="w-5 h-5" />
+            </div>
 
-          {/* Warning / Lock Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/15 border border-red-500/40 text-red-400 font-mono text-xs font-bold uppercase tracking-wider">
-            <Lock className="w-3.5 h-3.5 text-red-400" />
-            <span>Not Permitted Now</span>
-          </div>
-
-          {/* Main Icon */}
-          <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto text-red-400 shadow-inner">
-            <Clock className="w-8 h-8 animate-pulse" />
-          </div>
-
-          {/* Heading */}
-          <div className="space-y-1.5">
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              {scanner?.isDemo ? 'Demo Scanner Expired' : 'Scanner Paused & Closed'}
-            </h1>
-            <p className="font-mono text-xs text-red-400 font-semibold uppercase tracking-wider">
-              {scanner?.clientName || scanner?.businessName || 'Review Scanner'}
-            </p>
-          </div>
-
-          {/* Explanation Box */}
-          <div className="p-4 bg-[#1B1D28] border border-[#2B2E3E] rounded-2xl text-left space-y-2.5 text-xs sm:text-sm text-gray-300">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <p className="font-medium text-gray-200 leading-relaxed">
-                {scanner?.isDemo
-                  ? 'This demo review scanner session has reached its allotted duration and is now closed. Review submissions and QR scans are not permitted through this link.'
-                  : 'This review scanner link is currently inactive or paused by the administrator. Direct review submissions are not permitted at this time.'}
+            <div className="space-y-1.5">
+              <h1 className="font-display text-2xl font-semibold text-slate-900 tracking-tight">
+                {scanner?.isDemo ? 'This demo has ended' : 'This review link is paused'}
+              </h1>
+              <p className="text-sm text-slate-500">
+                {scanner?.clientName || scanner?.businessName || 'Review scanner'}
               </p>
             </div>
-            <div className="pt-2 border-t border-[#2B2E3E] flex items-center justify-between text-[11px] font-mono text-gray-400">
-              <span>Status: <strong className="text-red-400">CLOSED</strong></span>
-              <span>Access: <strong className="text-red-400">NOT PERMITTED</strong></span>
-            </div>
-          </div>
 
-          {/* ASN Digital Media Info Notice */}
-          <div className="p-4 bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-blue-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-200/90 text-center space-y-1 font-mono">
-            <div className="font-bold text-amber-300 flex items-center justify-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Get Your Business Live QR Standee</span>
-            </div>
-            <p className="text-[11px] text-gray-300 font-sans leading-relaxed">
-              Activate a permanent Commercial QR Review Scanner with custom branding, multi-doctor support & Google integration.
+            <p className="text-[15px] leading-relaxed text-slate-700">
+              {scanner?.isDemo
+                ? 'The demo session has reached its time limit, so reviews can no longer be submitted through this link.'
+                : 'The administrator has paused this link, so reviews can’t be submitted right now. Please try again later or contact the business directly.'}
             </p>
-          </div>
 
-          {/* Action Link */}
-          <div className="pt-1 flex flex-col sm:flex-row gap-2.5">
-            <Link
-              to="/"
-              className="flex-1 py-3 px-4 bg-[#1E202B] hover:bg-[#2A2D3D] text-white font-mono text-xs font-bold rounded-xl transition-all text-center border border-[#2B2E3E]"
-            >
-              Return Home
-            </Link>
-            <a
-              href="mailto:contact@asnmedia.in"
-              className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold rounded-xl transition-all text-center shadow-lg shadow-emerald-600/20"
-            >
-              Contact ASN Media
-            </a>
-          </div>
+            <div className="border-t border-[#e6e9e6] pt-5 space-y-1">
+              <p className="text-sm font-medium text-slate-900">Want a QR review scanner for your business?</p>
+              <p className="text-sm text-slate-500">
+                We set up branded scanners with multi-doctor support and Google integration.
+              </p>
+            </div>
 
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <a
+                href="mailto:contact@asnmedia.in"
+                className="flex-1 text-center text-sm font-medium bg-[#0f5f4a] hover:bg-[#0b4c3b] text-white rounded-md px-4 py-3 transition-colors"
+              >
+                Contact ASN Media
+              </a>
+              <Link
+                to="/"
+                className="flex-1 text-center text-sm font-medium border border-[#cfd4d0] hover:bg-slate-50 text-slate-800 rounded-md px-4 py-3 transition-colors"
+              >
+                Go to home
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </Shell>
     );
   }
 
-  // INDUSTRY CHECK: Only Hospital/Healthcare gets the 2-Column Mint Doctor layout
-  const isHospital = scanner?.industry === 'Hospital / Healthcare' || 
+  // INDUSTRY CHECK: Hospital/Healthcare gets the doctor + treatment selector
+  const isHospital = scanner?.industry === 'Hospital / Healthcare' ||
     (scanner?.industry && scanner.industry.toLowerCase().includes('hospital')) ||
     String(slug || '').toLowerCase().includes('deshmukh');
 
@@ -734,404 +798,269 @@ export const PublicReviewScanner = () => {
     })
     .map(s => s.trim().toUpperCase());
 
-  // 3. Unified dynamic chips list: 'ALL', followed by available doctors from DB, followed by services from DB
-  const chipsList = Array.from(new Set([
-    'ALL',
-    ...dynamicDoctorChips,
-    ...dynamicServiceChips
-  ]));
+  // 3. Unified chip lists (doctors first, then services)
+  const doctorOptions = Array.from(new Set(dynamicDoctorChips));
+  const serviceOptions = Array.from(new Set(dynamicServiceChips));
 
-  // ==========================================
-  // 1. HOSPITAL INDUSTRY SPECIALIZED UI (Exact Screenshot Match)
-  // ==========================================
-  if (isHospital) {
-    return (
-      <div className="min-h-screen bg-[#d8f0ea] text-[#0a2520] font-body flex flex-col justify-between items-center p-4 sm:p-8 selection:bg-[#008768] selection:text-white">
-        {/* Toast Alert */}
-        {redirectNotice && (
-          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#008768] text-white px-5 py-2.5 rounded-full shadow-2xl font-mono text-xs flex items-center gap-2 animate-bounce border border-white/20">
-            <CheckCircle2 className="w-4 h-4 text-white" />
-            <span>Review copied to clipboard! Opening Google Reviews...</span>
-          </div>
-        )}
-
-        {/* Top Hospital Title with Accent Dash */}
-        <div className="pt-2 pb-6 text-center space-y-2">
-          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0a2520] tracking-tight">
-            {scanner?.clientName || scanner?.businessName || 'Deshmukh Eye Hospital'}
-          </h1>
-          <div className="w-12 h-1.5 bg-[#008768] rounded-full mx-auto" />
-        </div>
-
-        {/* Main Two-Column Wide Card (As in user screenshot) */}
-        <div className="w-full max-w-5xl bg-white rounded-[32px] shadow-xl border border-[#cbe6dd] p-6 sm:p-10 my-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-            
-            {/* LEFT COLUMN: Experience, Chips & Star Rating */}
-            <div className="lg:col-span-6 space-y-6 lg:pr-6 lg:border-r border-[#e8f2ee]">
-              <div className="space-y-1">
-                <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[#0a2520] tracking-tight">
-                  How was your experience?
-                </h2>
-                <p className="text-xs sm:text-sm text-[#4b6f68] font-medium">
-                  Select a service & tap a star for your perfect review.
-                </p>
-              </div>
-
-              {/* Which Doctor / Services Section Header */}
-              <div className="space-y-3 pt-1">
-                <label className="block text-[11px] font-mono font-extrabold uppercase tracking-wider text-[#4b6f68]">
-                  WHICH DOCTOR? (OPTIONAL)
-                </label>
-
-                {/* Responsive Chip Grid */}
-                <div className="flex flex-wrap gap-2 sm:gap-2.5">
-                  {chipsList.map((chipItem) => {
-                    const isSelected = selectedChip === chipItem;
-                    return (
-                      <button
-                        key={chipItem}
-                        type="button"
-                        onClick={() => handleChipSelect(chipItem)}
-                        className={`text-[10px] sm:text-[10.5px] font-bold uppercase tracking-tight px-3 py-2.5 rounded-2xl transition-all cursor-pointer select-none text-center ${
-                          isSelected
-                            ? 'bg-[#008768] text-white shadow-sm border border-[#008768]'
-                            : 'bg-[#edf8f5] text-[#006b52] border border-[#d6ebe3] hover:bg-[#e2f3ed]'
-                        }`}
-                      >
-                        {chipItem}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Star Rating & Label */}
-              <div className="pt-4 flex flex-col items-center justify-center gap-2 border-t border-[#edf6f2]">
-                <div className="flex items-center gap-2.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => handleRatingChange(star)}
-                      className="p-1 transition-transform active:scale-125 focus:outline-none cursor-pointer"
-                      aria-label={`Rate ${star} stars`}
-                    >
-                      <Star
-                        className={`w-9 h-9 sm:w-10 sm:h-10 transition-colors ${
-                          star <= rating
-                            ? 'fill-[#008768] text-[#008768]'
-                            : 'text-[#d6ebe3] fill-transparent'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-                <span className="font-mono text-xs sm:text-sm font-extrabold tracking-widest text-[#0a2520] uppercase">
-                  {getRatingLabel(rating)}
-                </span>
-              </div>
-            </div>
-
-            {/* RIGHT COLUMN: AI Crafting, Language Pills, Textarea, Name Input & Post on Google Button */}
-            <div className="lg:col-span-6 flex flex-col justify-between space-y-4 lg:pl-4">
-              
-              {/* Top Language Bar */}
-              <div className="flex items-center justify-between gap-2 border-b border-[#e2f0ea] pb-3">
-                <span className="text-[11px] font-mono font-extrabold tracking-wider uppercase text-[#4b6f68]">
-                  CRAFTING YOUR REVIEWS...
-                </span>
-
-                {/* Language Switcher Pills (English, हिंदी, मराठी) */}
-                <div className="flex items-center gap-1 bg-[#edf8f5] p-1 rounded-xl border border-[#d6ebe3]">
-                  {['English', 'हिंदी', 'मराठी'].map((lang) => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => handleLanguageChange(lang)}
-                      className={`px-3 py-1 text-xs rounded-lg transition-all cursor-pointer ${
-                        selectedLanguage === lang
-                          ? 'bg-[#008768] text-white font-bold shadow-xs'
-                          : 'text-[#4b6f68] font-medium hover:text-[#0a2520]'
-                      }`}
-                    >
-                      {lang}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sparkle Generating Header */}
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#008768]">
-                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                <span>{isGenerating ? 'GENERATING...' : 'AI REVIEW READY'}</span>
-              </div>
-
-              {/* Review Display / Edit Textarea */}
-              <div className="relative">
-                <textarea
-                  value={editedReview || generatedReview}
-                  onChange={(e) => setEditedReview(e.target.value)}
-                  rows={5}
-                  placeholder="Our AI is crafting your review..."
-                  className="w-full bg-[#eef6f3] border border-[#d6ebe3] text-[#0a2520] text-xs sm:text-sm leading-relaxed p-4 rounded-2xl focus:outline-none focus:border-[#008768] focus:ring-1 focus:ring-[#008768] transition-all font-body resize-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopyToClipboard}
-                  className="absolute top-3 right-3 p-1.5 bg-white border border-[#cbebe0] rounded-lg shadow-xs hover:bg-[#f0faf6] text-[#4b6f68] transition-colors cursor-pointer"
-                  title="Copy to clipboard"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Name Input Box (Optional) */}
-              <input
-                type="text"
-                value={reviewerName}
-                onChange={(e) => setReviewerName(e.target.value)}
-                placeholder="Your name (optional)"
-                className="w-full bg-white border border-[#cbebe0] text-[#0a2520] placeholder-[#7d9e96] text-xs sm:text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-[#008768] transition-all"
-              />
-
-              {/* Action Buttons & Status */}
-              <div className="space-y-3 pt-1">
-                <button
-                  type="button"
-                  onClick={handleOpenGoogle}
-                  disabled={isGenerating}
-                  className="w-full py-3.5 px-6 bg-[#48a994] hover:bg-[#008768] active:bg-[#006e54] text-white font-mono font-extrabold text-xs sm:text-sm tracking-wider uppercase rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>GENERATING...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>POST ON GOOGLE</span>
-                      <ExternalLink className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform" />
-                    </>
-                  )}
-                </button>
-
-                {/* Status Indicator */}
-                <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono font-bold text-[#4b6f68]">
-                  <span className="w-2 h-2 rounded-full bg-[#008768] inline-block" />
-                  <span>AUTO-COPIED</span>
-                </div>
-
-                {/* Secondary Direct In-Web Post button */}
-                <div className="pt-1 text-center">
-                  <button
-                    type="button"
-                    onClick={handleDirectWebSubmit}
-                    disabled={isSubmittingDirect || directSubmitted}
-                    className="text-xs font-mono text-[#006b52] hover:text-[#0a2520] hover:underline transition-colors cursor-pointer"
-                  >
-                    {directSubmitted
-                      ? `✓ Review Published on ${scanner?.clientName || 'Hospital'} Portal`
-                      : `Or Submit Directly to ${scanner?.clientName || 'Hospital'} Portal →`}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Footer */}
-        <div className="pt-6 pb-2 text-center flex items-center justify-center gap-4 text-xs font-mono text-[#4b6f68]">
-          <Link to="/terms" className="hover:underline hover:text-[#0a2520]">
-            Terms & Conditions
-          </Link>
-          <span>•</span>
-          <Link to="/terms" className="hover:underline hover:text-[#0a2520]">
-            Privacy Policy
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // 2. UNIVERSAL BUSINESS & GARAGE & RETAIL & DINING UI
-  // ==========================================
   const questionsList = scanner?.questions && scanner.questions.length > 0
     ? scanner.questions
     : DEFAULT_QUESTIONS;
 
+  const businessTitle = scanner?.clientName || scanner?.businessName || 'Review';
+  const ratingLabel = getRatingLabel(rating);
+  const ratingText = ratingLabel.charAt(0) + ratingLabel.slice(1).toLowerCase();
+  const reviewValue = editedReview || generatedReview;
+
+  // ==========================================
+  // MAIN FORM (hospital + all other industries)
+  // ==========================================
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-body flex flex-col justify-between items-center p-4 sm:p-8">
-      {/* Toast Alert */}
-      {redirectNotice && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-5 py-2.5 rounded-full shadow-2xl font-mono text-xs flex items-center gap-2 animate-bounce border border-white/20">
-          <CheckCircle2 className="w-4 h-4 text-white" />
-          <span>Review copied to clipboard! Opening Google Reviews...</span>
-        </div>
-      )}
+    <Shell toast={redirectNotice}>
+      <div className="w-full max-w-lg my-auto">
+        {/* Header */}
+        <header className="mb-6 sm:mb-8">
+          <h1 className="font-display text-[26px] sm:text-3xl font-semibold text-slate-900 tracking-tight leading-tight">
+            {businessTitle}
+          </h1>
+          <p className="mt-1.5 text-[15px] text-slate-600">
+            Rate your visit and we’ll draft a review you can edit and post.
+          </p>
+        </header>
 
-      {/* Top Business Title */}
-      <div className="pt-2 pb-6 text-center space-y-2 max-w-xl">
-        <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 bg-slate-800 text-indigo-400 rounded-full border border-slate-700">
-          {scanner?.industry || 'Verified Business'}
-        </span>
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-          {scanner?.clientName || scanner?.businessName || 'Business Review Experience'}
-        </h1>
-      </div>
-
-      {/* Main Universal Card */}
-      <div className="w-full max-w-2xl bg-slate-800/90 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-700 p-6 sm:p-8 my-auto space-y-6">
-        
-        {/* Star Rating Selector */}
-        <div className="text-center space-y-3 pb-4 border-b border-slate-700">
-          <h2 className="text-lg font-bold text-white">How was your experience?</h2>
-          <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => handleRatingChange(star)}
-                className="p-1 transition-transform active:scale-125 focus:outline-none cursor-pointer"
-                aria-label={`Rate ${star} stars`}
-              >
-                <Star
-                  className={`w-9 h-9 sm:w-10 sm:h-10 transition-colors ${
-                    star <= rating
-                      ? 'fill-amber-400 text-amber-400'
-                      : 'text-slate-600 fill-transparent'
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-          <span className="font-mono text-xs font-bold tracking-widest text-indigo-400 uppercase">
-            {getRatingLabel(rating)}
-          </span>
-        </div>
-
-        {/* Dynamic Business Questions */}
-        {questionsList.length > 0 && (
-          <div className="space-y-4">
-            {questionsList.map((q) => (
-              <div key={q.id} className="space-y-1.5">
-                <label className="block text-xs font-mono font-bold text-slate-300">
-                  {q.question}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {(q.options || []).map((opt) => {
-                    const isSelected = answers[q.question] === opt.value || answers[q.question] === opt.label;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleAnswerChange(q.question, opt.value || opt.label)}
-                        className={`text-xs px-3.5 py-2 rounded-xl font-medium transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white shadow-md'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+        <div className="bg-white border border-[#d9ddd9] rounded-xl">
+          {/* Rating */}
+          <section className="p-5 sm:p-7 border-b border-[#e6e9e6]">
+            <p className="text-sm font-medium text-slate-800 mb-3">Your rating</p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center -ml-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => handleRatingChange(star)}
+                    className="p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0f5f4a]/40 cursor-pointer"
+                    aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                    aria-pressed={star === rating}
+                  >
+                    <Star
+                      className={`w-8 h-8 sm:w-9 sm:h-9 transition-colors ${star <= rating
+                        ? 'fill-[#e0a100] text-[#e0a100]'
+                        : 'text-[#c9cec9] fill-transparent'
                         }`}
-                      >
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm text-slate-700">{ratingText}</span>
+            </div>
+          </section>
+
+          {/* Questions (dropdowns & inputs) */}
+          <section className="p-5 sm:p-7 border-b border-[#e6e9e6] space-y-5">
+            {isHospital && (
+              <Field label="Doctor or treatment" hint="Optional">
+                <SelectBox
+                  value={selectedChip}
+                  onChange={(e) => handleChipSelect(e.target.value)}
+                  ariaLabel="Doctor or treatment"
+                >
+                  <option value="ALL">All / general visit</option>
+                  {doctorOptions.length > 0 && (
+                    <optgroup label="Doctors">
+                      {doctorOptions.map((d) => (
+                        <option key={d} value={d}>{toDisplayCase(d)}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {serviceOptions.length > 0 && (
+                    <optgroup label="Treatments & services">
+                      {serviceOptions.map((s) => (
+                        <option key={s} value={s}>{toDisplayCase(s)}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </SelectBox>
+              </Field>
+            )}
+
+            {questionsList.map((q) => (
+              <Field key={q.id || q.question} label={q.question}>
+                {q.options && q.options.length > 0 ? (
+                  <SelectBox
+                    value={answers[q.question] ?? ''}
+                    onChange={(e) => handleAnswerChange(q.question, e.target.value)}
+                    ariaLabel={q.question}
+                  >
+                    {q.options.map((opt) => (
+                      <option key={opt.id || opt.value || opt.label} value={opt.value || opt.label}>
                         {opt.label}
-                      </button>
-                    );
-                  })}
+                      </option>
+                    ))}
+                  </SelectBox>
+                ) : (
+                  <input
+                    type="text"
+                    value={answers[q.question] ?? ''}
+                    onChange={(e) => handleAnswerChange(q.question, e.target.value)}
+                    placeholder="Your answer..."
+                    aria-label={q.question}
+                    className={`${FIELD_BASE} placeholder-slate-400`}
+                  />
+                )}
+              </Field>
+            ))}
+          </section>
+
+          {/* Review */}
+          <section className="p-5 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-slate-800">Your review</p>
+
+              <div className="inline-flex border border-[#cfd4d0] rounded-md overflow-hidden" role="group" aria-label="Review language">
+                {LANGUAGES.map((lang, i) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => handleLanguageChange(lang)}
+                    aria-pressed={selectedLanguage === lang}
+                    className={`px-3 py-1.5 text-[13px] cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0f5f4a]/40 ${i > 0 ? 'border-l border-[#cfd4d0]' : ''
+                      } ${selectedLanguage === lang
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="relative">
+                <textarea
+                  value={reviewValue}
+                  onChange={(e) => setEditedReview(e.target.value)}
+                  rows={6}
+                  placeholder="Writing your review…"
+                  aria-label="Review text"
+                  disabled={isGenerating}
+                  className={`${FIELD_BASE} leading-relaxed resize-none ${isGenerating ? 'text-transparent' : ''}`}
+                />
+                {isGenerating && (
+                  <div
+                    className="absolute inset-0 rounded-md bg-white border border-[#cfd4d0] p-4 flex flex-col justify-between"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <div className="space-y-2.5 animate-pulse">
+                      <div className="h-2.5 rounded bg-slate-200 w-11/12" />
+                      <div className="h-2.5 rounded bg-slate-200 w-full" />
+                      <div className="h-2.5 rounded bg-slate-200 w-10/12" />
+                      <div className="h-2.5 rounded bg-slate-200 w-7/12" />
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#0f5f4a]" />
+                      Generating your review…
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[13px] text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  {isGenerating ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Writing a new draft…
+                    </>
+                  ) : copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-[#0f5f4a]" />
+                      Copied to clipboard
+                    </>
+                  ) : (
+                    'Draft ready'
+                  )}
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={isGenerating}
+                    className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer underline-offset-2 hover:underline"
+                    title="Generate another variation with the same answers"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+                    Regenerate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyToClipboard}
+                    disabled={isGenerating}
+                    className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer underline-offset-2 hover:underline"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Language & Generated Review Section */}
-        <div className="space-y-3 pt-2 bg-slate-900/60 p-5 rounded-2xl border border-slate-700">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold text-indigo-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isGenerating ? 'GENERATING...' : 'AI REVIEW READY'}</span>
-            </span>
-
-            {/* Language Switcher */}
-            <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
-              {['English', 'हिंदी', 'मराठी'].map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => handleLanguageChange(lang)}
-                  className={`px-2.5 py-1 text-xs rounded-lg transition-all cursor-pointer ${
-                    selectedLanguage === lang
-                      ? 'bg-indigo-600 text-white font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {lang}
-                </button>
-              ))}
             </div>
-          </div>
 
-          <div className="relative">
-            <textarea
-              value={editedReview || generatedReview}
-              onChange={(e) => setEditedReview(e.target.value)}
-              rows={4}
-              placeholder="Your review is ready..."
-              className="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm leading-relaxed p-4 rounded-xl focus:outline-none focus:border-indigo-500 font-body resize-none"
-            />
-            <button
-              type="button"
-              onClick={handleCopyToClipboard}
-              className="absolute top-3 right-3 p-1.5 bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
-              title="Copy"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-          </div>
+            <Field label="Your name" hint="Optional">
+              <input
+                type="text"
+                value={reviewerName}
+                onChange={(e) => setReviewerName(e.target.value)}
+                placeholder="e.g. Rahul Patil"
+                autoComplete="name"
+                className={`${FIELD_BASE} placeholder-slate-400`}
+              />
+            </Field>
 
-          <input
-            type="text"
-            value={reviewerName}
-            onChange={(e) => setReviewerName(e.target.value)}
-            placeholder="Your name (optional)"
-            className="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm px-4 py-2.5 rounded-xl focus:outline-none focus:border-indigo-500"
-          />
+            <div className="space-y-3 pt-1">
+              <button
+                type="button"
+                onClick={handleOpenGoogle}
+                disabled={isGenerating}
+                className="w-full inline-flex items-center justify-center gap-2 bg-[#0f5f4a] hover:bg-[#0b4c3b] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[15px] font-medium rounded-md px-5 py-3.5 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0f5f4a]"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Generating review…
+                  </>
+                ) : (
+                  <>
+                    Post on Google
+                    <ExternalLink className="w-4 h-4" />
+                  </>
+                )}
+              </button>
 
-          <button
-            type="button"
-            onClick={handleOpenGoogle}
-            disabled={isGenerating}
-            className="w-full py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-mono font-bold text-xs sm:text-sm tracking-wider uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>POST ON GOOGLE</span>
-            <ExternalLink className="w-4 h-4" />
-          </button>
-
-          <div className="pt-2 text-center">
-            <button
-              type="button"
-              onClick={handleDirectWebSubmit}
-              disabled={isSubmittingDirect || directSubmitted}
-              className="text-xs font-mono text-slate-400 hover:text-indigo-400 hover:underline transition-colors cursor-pointer"
-            >
-              {directSubmitted
-                ? `✓ Review Published to ${scanner?.clientName || 'Business'}`
-                : `Or Submit Review Directly to ${scanner?.clientName || 'Business'} →`}
-            </button>
-          </div>
+              <div className="text-center">
+                {directSubmitted ? (
+                  <p className="inline-flex items-center gap-1.5 text-sm text-[#0f5f4a]">
+                    <Check className="w-4 h-4" />
+                    Review sent to {businessTitle}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleDirectWebSubmit}
+                    disabled={isSubmittingDirect}
+                    className="text-sm text-slate-600 hover:text-slate-900 underline underline-offset-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {isSubmittingDirect ? 'Sending…' : `Send directly to ${businessTitle} instead`}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="pt-6 pb-2 text-center flex items-center justify-center gap-4 text-xs font-mono text-slate-500">
-        <Link to="/terms" className="hover:underline hover:text-slate-300">
-          Terms & Conditions
-        </Link>
-        <span>•</span>
-        <Link to="/terms" className="hover:underline hover:text-slate-300">
-          Privacy Policy
-        </Link>
-      </div>
-    </div>
+      <Footer />
+    </Shell>
   );
 };
 
