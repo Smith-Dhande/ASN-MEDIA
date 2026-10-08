@@ -4,9 +4,9 @@ const Staff = require('../models/Staff');
 const Setting = require('../models/Setting');
 
 const ADMIN_DATA = {
-  name: 'Admin',
-  email: 'test@gmail.com',
-  password: 'test@1234',
+  name: process.env.ADMIN_NAME || 'Admin',
+  email: process.env.ADMIN_EMAIL || 'admin@asnmedia.in',
+  password: process.env.ADMIN_PASSWORD || 'Pass123',
   role: 'Super Admin',
   designation: 'Super Administrator',
   phone: '+91 98765 43210',
