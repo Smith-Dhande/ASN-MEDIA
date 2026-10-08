@@ -12,26 +12,41 @@ function getIndustryCategory(industryStr, businessNameStr) {
   const ind = (industryStr || '').toLowerCase();
   const bName = (businessNameStr || '').toLowerCase();
   
-  if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
+  if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || ind.includes('doctor') || ind.includes('medical') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
     return 'hospital';
   }
-  if (ind.includes('auto') || ind.includes('garage') || ind.includes('car') || ind.includes('motor') || ind.includes('workshop') || bName.includes('garage') || bName.includes('auto') || bName.includes('motors') || bName.includes('workshop') || bName.includes('service center')) {
+  if (ind.includes('auto') || ind.includes('garage') || ind.includes('car') || ind.includes('motor') || ind.includes('workshop') || ind.includes('bike') || ind.includes('vehicle') || bName.includes('garage') || bName.includes('auto') || bName.includes('motors') || bName.includes('workshop') || bName.includes('service center')) {
     return 'automotive';
   }
-  if (ind.includes('dining') || ind.includes('restaurant') || ind.includes('food') || ind.includes('cafe') || ind.includes('hotel') || bName.includes('cafe') || bName.includes('restaurant') || bName.includes('kitchen') || bName.includes('dhaba')) {
+  if (ind.includes('dining') || ind.includes('restaurant') || ind.includes('food') || ind.includes('cafe') || ind.includes('hotel') || ind.includes('bakery') || ind.includes('dhaba') || bName.includes('cafe') || bName.includes('restaurant') || bName.includes('kitchen') || bName.includes('dhaba')) {
     return 'dining';
   }
-  if (ind.includes('retail') || ind.includes('shopping') || ind.includes('store') || ind.includes('market') || ind.includes('fashion') || bName.includes('store') || bName.includes('mart') || bName.includes('jewellers') || bName.includes('fashion')) {
+  if (ind.includes('retail') || ind.includes('shopping') || ind.includes('store') || ind.includes('market') || ind.includes('fashion') || ind.includes('jewel') || bName.includes('store') || bName.includes('mart') || bName.includes('jewellers') || bName.includes('fashion')) {
     return 'retail';
   }
-  if (ind.includes('corp') || ind.includes('tech') || ind.includes('it') || ind.includes('consult') || ind.includes('software') || ind.includes('media') || ind.includes('agency')) {
+  if (ind.includes('salon') || ind.includes('spa') || ind.includes('beauty') || ind.includes('parlour') || ind.includes('hair') || ind.includes('grooming')) {
+    return 'salon';
+  }
+  if (ind.includes('gym') || ind.includes('fit') || ind.includes('workout') || ind.includes('crossfit') || ind.includes('yoga')) {
+    return 'fitness';
+  }
+  if (ind.includes('edu') || ind.includes('coach') || ind.includes('school') || ind.includes('class') || ind.includes('academy') || ind.includes('institute') || ind.includes('tutor')) {
+    return 'education';
+  }
+  if (ind.includes('real estate') || ind.includes('estate') || ind.includes('architect') || ind.includes('interior') || ind.includes('property') || ind.includes('builder')) {
+    return 'realestate';
+  }
+  if (ind.includes('corp') || ind.includes('tech') || ind.includes('it') || ind.includes('consult') || ind.includes('software') || ind.includes('media') || ind.includes('agency') || ind.includes('law') || ind.includes('legal')) {
     return 'corporate';
   }
   return 'general';
 }
 
-// Helper function to pick a random template from industry-scoped 70+ review pool and interpolate variables
-function generateDynamicReviewFromPool({ language, industry, rating, businessName, doctorName, serviceName, phraseStr }) {
+// In-memory cache to ensure non-repetition across sequential requests for the same scanner/session
+const recentPicksMap = new Map();
+
+// Helper function to pick a diverse template from industry-scoped review pool and interpolate variables
+function generateDynamicReviewFromPool({ language, industry, rating, businessName, doctorName, serviceName, phraseStr, excludeText, contextKey }) {
   const langKey = (language || 'English').toLowerCase();
   let lang = 'english';
   if (langKey === 'मराठी' || langKey === 'mr' || langKey === 'marathi') {
@@ -45,14 +60,29 @@ function generateDynamicReviewFromPool({ language, industry, rating, businessNam
   const pool = catTemplates[lang] || catTemplates.english || reviewsPoolData.templates.general[lang] || [];
 
   if (!pool || pool.length === 0) {
-    return `Great experience with ${businessName || 'this business'}! Highly recommended! ⭐⭐⭐⭐⭐`;
+    return `Great experience with ${businessName || 'this business'}! Highly recommended.`;
   }
 
-  // Pick random template from category pool
-  const randomIndex = Math.floor(Math.random() * pool.length);
-  let text = pool[randomIndex];
+  // Anti-repetition: avoid recent picks for this business/session
+  const cacheKey = contextKey || `${businessName}_${cat}_${lang}`;
+  const recentPicks = recentPicksMap.get(cacheKey) || [];
 
-  const finalDoc = doctorName || (lang === 'marathi' ? 'तज्ज्ञ डॉक्टर' : lang === 'hindi' ? 'अनुभवी डॉक्टर' : 'the doctor');
+  // Filter pool candidates not in recent history and not equal to excludeText
+  let eligibleTemplates = pool.filter(t => !recentPicks.includes(t) && (!excludeText || t !== excludeText));
+  if (eligibleTemplates.length === 0) {
+    eligibleTemplates = pool.filter(t => !excludeText || t !== excludeText);
+    if (eligibleTemplates.length === 0) eligibleTemplates = pool;
+  }
+
+  // Pick a random template from eligible candidates
+  const randomIndex = Math.floor(Math.random() * eligibleTemplates.length);
+  let template = eligibleTemplates[randomIndex];
+
+  // Update recent picks history (keep last 5)
+  const updatedPicks = [template, ...recentPicks.filter(p => p !== template)].slice(0, 5);
+  recentPicksMap.set(cacheKey, updatedPicks);
+
+  const finalDoc = doctorName || (cat === 'hospital' ? (lang === 'marathi' ? 'तज्ज्ञ डॉक्टर' : lang === 'hindi' ? 'अनुभवी डॉक्टर' : 'the doctor') : '');
   
   let defaultService = 'exceptional service';
   if (cat === 'automotive') {
@@ -60,19 +90,27 @@ function generateDynamicReviewFromPool({ language, industry, rating, businessNam
   } else if (cat === 'hospital') {
     defaultService = lang === 'marathi' ? 'उपचार व तपासणी' : lang === 'hindi' ? 'उपचार व परामर्श' : 'consultation & treatment';
   } else if (cat === 'dining') {
-    defaultService = lang === 'marathi' ? 'स्वादिष्ट भोजन' : lang === 'hindi' ? 'स्वादिष्ट भोजन' : 'delicious food';
+    defaultService = lang === 'marathi' ? 'स्वादिष्ट भोजन' : lang === 'hindi' ? 'स्वादिष्ट भोजन' : 'dining experience';
   } else if (cat === 'retail') {
     defaultService = lang === 'marathi' ? 'खरेदी' : lang === 'hindi' ? 'खरीदारी' : 'shopping experience';
+  } else if (cat === 'salon') {
+    defaultService = lang === 'marathi' ? 'ग्रूमिंग सेवा' : lang === 'hindi' ? 'ब्यूटी व हेयर सर्विस' : 'hair & grooming service';
+  } else if (cat === 'fitness') {
+    defaultService = lang === 'marathi' ? 'फिटनेस ट्रेनिंग' : lang === 'hindi' ? 'वर्कआउट व ट्रेनिंग' : 'fitness training';
+  } else if (cat === 'education') {
+    defaultService = lang === 'marathi' ? 'शिक्षण व मार्गदर्शन' : lang === 'hindi' ? 'कोचिंग व शिक्षण' : 'coaching & training';
+  } else if (cat === 'realestate') {
+    defaultService = lang === 'marathi' ? 'वास्तु सल्ला' : lang === 'hindi' ? 'प्रॉपर्टी परामर्श' : 'consultation & design';
   }
 
   const finalService = serviceName || (phraseStr || defaultService);
   const finalBusiness = businessName || (cat === 'hospital' ? (lang === 'marathi' ? 'रुग्णालय' : lang === 'hindi' ? 'अस्पताल' : 'the hospital') : (cat === 'automotive' ? (lang === 'marathi' ? 'गॅरेज' : lang === 'hindi' ? 'गैराज' : 'the garage') : (lang === 'marathi' ? 'संस्था' : lang === 'hindi' ? 'प्रतिष्ठान' : 'this business')));
 
-  text = text
+  let text = template
     .replace(/{businessName}/g, finalBusiness)
-    .replace(/{doctorName}/g, finalDoc)
+    .replace(/{doctorName}/g, finalDoc || (lang === 'marathi' ? 'मार्गदर्शक' : lang === 'hindi' ? 'विशेषज्ञ' : 'the specialist'))
     .replace(/{serviceName}/g, finalService)
-    .replace(/{phrase}/g, phraseStr || 'exceptional care');
+    .replace(/{phrase}/g, phraseStr || 'exceptional service');
 
   return text;
 }
@@ -332,9 +370,18 @@ exports.generatePublicReview = async (req, res, next) => {
     const targetDocName = doctorName || selectedDoctor?.name || scanner.doctorName || (scanner.doctors?.[0]?.name) || '';
     const targetDocDept = doctorDepartment || selectedDoctor?.department || '';
     const targetService = serviceName || selectedService || '';
+    const previousReview = req.body.previousReview || '';
 
-    // Generate factual, polished review derived directly from customer answers
-    const reviewText = generateInputBasedReview({
+    let answerPhrases = [];
+    if (Array.isArray(answers)) {
+      answerPhrases = answers.map(a => a.answer || a.value || a).filter(Boolean);
+    } else if (answers && typeof answers === 'object') {
+      answerPhrases = Object.values(answers).filter(Boolean);
+    }
+    const phraseStr = answerPhrases.length > 0 ? answerPhrases.join(' and ') : 'the outstanding medical care and supportive staff';
+
+    // Primary: Generate factual, polished review derived directly from customer answers (Om's engine)
+    let reviewText = generateInputBasedReview({
       rating: numRating,
       language,
       businessName,
@@ -343,6 +390,21 @@ exports.generatePublicReview = async (req, res, next) => {
       answers,
       variationIndex: Number(variationIndex) || 0
     });
+
+    // Fallback: Draw dynamic review with variation from unique review pool (Palash's engine)
+    if (!reviewText) {
+      reviewText = generateDynamicReviewFromPool({
+        language,
+        industry: scanner.industry,
+        rating: numRating,
+        businessName,
+        doctorName: targetDocName,
+        serviceName: targetService,
+        phraseStr,
+        excludeText: previousReview,
+        contextKey: `${scanner.slug || slug}_${language}`
+      });
+    }
 
     // Update scanner metrics
     if (!scanner.metrics) {

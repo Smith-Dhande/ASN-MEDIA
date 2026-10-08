@@ -69,7 +69,8 @@ const INDUSTRIES = [
   ['Salon, Spa & Wellness', Scissors, 'Salon & spa'],
   ['Fitness & Gym', Dumbbell, 'Fitness'],
   ['Education & Coaching', GraduationCap, 'Education'],
-  ['Corporate & Professional Services', Briefcase, 'Services']
+  ['Corporate & Professional Services', Briefcase, 'Services'],
+  ['Other', Store, 'Custom / Other']
 ];
 
 const PAUSE_PRESETS = [
@@ -80,7 +81,7 @@ const DEMO_PRESETS = [[15, '15 min'], [30, '30 min'], [60, '1 hour'], [120, '2 h
 
 const emptyForm = () => ({
   id: null, clientId: '', clientName: '', name: '', slug: '', slugTouched: false,
-  industry: 'General Business', doctorName: '', doctors: [], hospitalServices: [],
+  industry: 'General Business', customIndustry: '', doctorName: '', doctors: [], hospitalServices: [],
   googleUrl: '', placeId: '', googleReviewUrl: '', ratingRequired: true, status: 'Active',
   isDemo: false, demoDurationMinutes: 60, demoExpiresAt: null,
   autoPauseEnabled: false, autoPauseDurationMinutes: 0, autoPauseAt: '', pausePreset: 0,
@@ -297,6 +298,8 @@ export const ReviewScannersModule = () => {
   };
 
   const openEdit = (s) => {
+    const isPreset = INDUSTRIES.some(([v]) => v !== 'Other' && v.toLowerCase() === (s.industry || '').toLowerCase());
+    const isCustom = !isPreset && Boolean(s.industry && s.industry !== 'General Business');
     setEditMode(true); setErrors({}); setOpenQ(-1);
     const dur = s.autoPauseDurationMinutes || 0;
     const gUrl = s.googleUrl || '';
@@ -304,6 +307,8 @@ export const ReviewScannersModule = () => {
     const gReviewUrl = s.googleReviewUrl || buildReviewUrl(pId, gUrl);
     setForm({
       ...emptyForm(), ...s,
+      industry: isCustom ? 'Other' : (s.industry || 'General Business'),
+      customIndustry: isCustom ? s.industry : '',
       id: s.id || s._id, clientName: s.clientName || s.businessName || '',
       name: s.name || s.placeName || '', slug: s.slug || '', slugTouched: true,
       doctorName: s.doctorName || (s.doctors?.[0]?.name ? s.doctors[0].name.replace(/^Dr\.\s*/i, '') : ''),
@@ -440,7 +445,13 @@ export const ReviewScannersModule = () => {
     const pId = form.placeId.trim() || extractPlaceId(form.googleReviewUrl) || extractPlaceId(form.googleUrl) || '';
     const reviewUrl = form.googleReviewUrl.trim() || buildReviewUrl(pId, form.googleUrl);
     const pageUrl = form.googleUrl.trim() || reviewUrl;
-    const { slugTouched, pausePreset, ...rest } = form;
+    let finalIndustry = (form.industry || 'General Business').trim();
+    if (finalIndustry === 'Other' && form.customIndustry?.trim()) {
+      finalIndustry = form.customIndustry.trim();
+    } else if (finalIndustry === 'Other') {
+      finalIndustry = 'General Business';
+    }
+    const { slugTouched, pausePreset, customIndustry, ...rest } = form;
     const payload = {
       ...rest,
       name,
@@ -449,6 +460,7 @@ export const ReviewScannersModule = () => {
       placeId: pId,
       googleUrl: pageUrl,
       googleReviewUrl: reviewUrl,
+      industry: finalIndustry,
       doctorName: form.doctorName ? (form.doctorName.startsWith('Dr.') ? form.doctorName : `Dr. ${form.doctorName}`) : '',
       demoDurationMinutes: Number(form.demoDurationMinutes) || 60
     };
@@ -681,6 +693,26 @@ export const ReviewScannersModule = () => {
                     </button>
                   ))}
                 </div>
+                {form.industry === 'Other' && (
+                  <div className="mt-2.5 p-3 bg-amber-50/90 border border-amber-300 rounded-xl space-y-1.5">
+                    <label className="block text-[11px] font-mono font-bold text-amber-950 flex items-center justify-between">
+                      <span>Specify Business Category:</span>
+                      <span className="text-[10px] font-mono text-amber-800 bg-amber-200/70 px-1.5 py-0.2 rounded font-semibold">
+                        Manual Type
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.customIndustry || ''}
+                      onChange={(e) => setForm((f) => ({ ...f, customIndustry: e.target.value }))}
+                      placeholder="e.g. Photography Studio, Dental Clinic, Legal & Law Firm..."
+                      className={inputCls}
+                    />
+                    <p className="text-[10.5px] text-amber-800/90 leading-tight">
+                      When customers scan this standee, review vocabulary and praise tone will adapt to this category.
+                    </p>
+                  </div>
+                )}
               </Field>
             </Section>
 
@@ -922,7 +954,7 @@ export const ReviewScannersModule = () => {
             {r.clientName}
             {r.isDemo && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-semibold rounded">Demo</span>}
           </button>
-          <div className="text-xs text-[#685C43]">{r.name || r.placeName || 'Review scanner'} · <span className="text-[#8E722A]">/review/{r.slug}</span></div>
+          <div className="text-xs text-[#685C43] flex items-center gap-1.5 flex-wrap"><span>{r.name || r.placeName || 'Review scanner'}</span><span>·</span><span className="text-[#8E722A]">/review/{r.slug}</span><span className="px-1.5 py-0.5 bg-[#FAF8F3] border border-[#0A0A0A]/15 text-[#555] rounded text-[10px] font-sans font-semibold">{r.industry || 'General Business'}</span></div>
         </div>
       )
     },

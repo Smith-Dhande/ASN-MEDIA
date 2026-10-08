@@ -80,20 +80,31 @@ const MIN_GENERATING_MS = 2000;
 function getIndustryCategory(industryStr, businessNameStr) {
   const ind = (industryStr || '').toLowerCase();
   const bName = (businessNameStr || '').toLowerCase();
-
-  if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
+  if (ind.includes('hospital') || ind.includes('health') || ind.includes('eye') || ind.includes('clinic') || ind.includes('dental') || ind.includes('doctor') || ind.includes('medical') || bName.includes('hospital') || bName.includes('clinic') || bName.includes('eye care') || bName.includes('deshmukh')) {
     return 'hospital';
   }
-  if (ind.includes('auto') || ind.includes('garage') || ind.includes('car') || ind.includes('motor') || ind.includes('workshop') || bName.includes('garage') || bName.includes('auto') || bName.includes('motors') || bName.includes('workshop') || bName.includes('service center')) {
+  if (ind.includes('auto') || ind.includes('garage') || ind.includes('car') || ind.includes('motor') || ind.includes('workshop') || ind.includes('bike') || ind.includes('vehicle') || bName.includes('garage') || bName.includes('auto') || bName.includes('motors') || bName.includes('workshop') || bName.includes('service center')) {
     return 'automotive';
   }
-  if (ind.includes('dining') || ind.includes('restaurant') || ind.includes('food') || ind.includes('cafe') || ind.includes('hotel') || bName.includes('cafe') || bName.includes('restaurant') || bName.includes('kitchen') || bName.includes('dhaba')) {
+  if (ind.includes('dining') || ind.includes('restaurant') || ind.includes('food') || ind.includes('cafe') || ind.includes('hotel') || ind.includes('bakery') || ind.includes('dhaba') || bName.includes('cafe') || bName.includes('restaurant') || bName.includes('kitchen') || bName.includes('dhaba')) {
     return 'dining';
   }
-  if (ind.includes('retail') || ind.includes('shopping') || ind.includes('store') || ind.includes('market') || ind.includes('fashion') || bName.includes('store') || bName.includes('mart') || bName.includes('jewellers') || bName.includes('fashion')) {
+  if (ind.includes('retail') || ind.includes('shopping') || ind.includes('store') || ind.includes('market') || ind.includes('fashion') || ind.includes('jewel') || bName.includes('store') || bName.includes('mart') || bName.includes('jewellers') || bName.includes('fashion')) {
     return 'retail';
   }
-  if (ind.includes('corp') || ind.includes('tech') || ind.includes('it') || ind.includes('consult') || ind.includes('software') || ind.includes('media') || ind.includes('agency')) {
+  if (ind.includes('salon') || ind.includes('spa') || ind.includes('beauty') || ind.includes('parlour') || ind.includes('hair') || ind.includes('grooming')) {
+    return 'salon';
+  }
+  if (ind.includes('gym') || ind.includes('fit') || ind.includes('workout') || ind.includes('crossfit') || ind.includes('yoga')) {
+    return 'fitness';
+  }
+  if (ind.includes('edu') || ind.includes('coach') || ind.includes('school') || ind.includes('class') || ind.includes('academy') || ind.includes('institute') || ind.includes('tutor')) {
+    return 'education';
+  }
+  if (ind.includes('real estate') || ind.includes('estate') || ind.includes('architect') || ind.includes('interior') || ind.includes('property') || ind.includes('builder')) {
+    return 'realestate';
+  }
+  if (ind.includes('corp') || ind.includes('tech') || ind.includes('it') || ind.includes('consult') || ind.includes('software') || ind.includes('media') || ind.includes('agency') || ind.includes('law') || ind.includes('legal')) {
     return 'corporate';
   }
   return 'general';
@@ -193,6 +204,7 @@ export const PublicReviewScanner = () => {
   const [isSubmittingDirect, setIsSubmittingDirect] = useState(false);
   const [directSubmitted, setDirectSubmitted] = useState(false);
   const [recentReviews, setRecentReviews] = useState([]);
+  const [recentReviewsHistory, setRecentReviewsHistory] = useState([]);
 
   // Demo Mode State & Countdown
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -520,7 +532,8 @@ export const PublicReviewScanner = () => {
           doctorName: targetDocName,
           selectedDoctor: matchedDoc || (targetDocName ? { name: targetDocName } : null),
           answers: formattedAnswers,
-          variationIndex: activeVariation
+          variationIndex: activeVariation,
+          previousReview: generatedReview || ''
         })
       });
 
@@ -531,6 +544,7 @@ export const PublicReviewScanner = () => {
           if (requestId !== generationId.current) return;
           setGeneratedReview(data.reviewText);
           setEditedReview(data.reviewText);
+          setRecentReviewsHistory((prev) => [data.reviewText, ...prev.filter(p => p !== data.reviewText)].slice(0, 8));
           setIsGenerating(false);
           try {
             navigator.clipboard.writeText(data.reviewText);
@@ -541,11 +555,11 @@ export const PublicReviewScanner = () => {
       }
     } catch (e) { }
 
-    // Client-side fallback from generic input-based review generator
+    // Client-side fallback: primary is Om's input-based review generator
     await waitForMinimum();
     if (requestId !== generationId.current) return;
 
-    const fallbackReview = generateInputBasedReview({
+    let fallbackReview = generateInputBasedReview({
       rating: stars,
       language: lang,
       businessName: bName,
@@ -555,8 +569,44 @@ export const PublicReviewScanner = () => {
       variationIndex: activeVariation
     });
 
+    // Secondary fallback from diverse multi-industry review pool if needed
+    if (!fallbackReview) {
+      const cat = getIndustryCategory(industry, bName);
+      const catTemplates = reviewsPoolData?.templates?.[cat] || reviewsPoolData?.templates?.general || {};
+
+      let langKey = 'english';
+      if (lang === 'मराठी') langKey = 'marathi';
+      else if (lang === 'हिंदी') langKey = 'hindi';
+
+      const pool = catTemplates[langKey] || catTemplates.english || reviewsPoolData?.templates?.general?.[langKey] || [];
+
+      // Filter out templates that were recently used to ensure unique structure every time
+      let eligible = pool.filter(t => !recentReviewsHistory.includes(t) && t !== generatedReview);
+      if (eligible.length === 0) {
+        eligible = pool.filter(t => t !== generatedReview);
+        if (eligible.length === 0) eligible = pool;
+      }
+
+      const randomIndex = Math.floor(Math.random() * (eligible.length || 1));
+      let templateStr = eligible[randomIndex] || `Great experience with ${bName}! Highly recommended.`;
+
+      let displayService = targetServiceName;
+      if (chip === 'ALL' || !displayService) {
+        displayService = lang === 'मराठी' ? 'उत्तम सेवा व सहकार्य' : lang === 'हिंदी' ? 'उत्कृष्ट सेवा व परामर्श' : 'exceptional service';
+      }
+
+      let displayDoc = targetDocName || (cat === 'hospital' ? (lang === 'मराठी' ? 'तज्ज्ञ डॉक्टर' : lang === 'हिंदी' ? 'अनुभवी डॉक्टर' : 'the doctor') : '');
+
+      fallbackReview = templateStr
+        .replace(/{businessName}/g, bName)
+        .replace(/{doctorName}/g, displayDoc || (lang === 'मराठी' ? 'तज्ज्ञ' : lang === 'हिंदी' ? 'विशेषज्ञ' : 'the specialist'))
+        .replace(/{serviceName}/g, displayService)
+        .replace(/{phrase}/g, 'exceptional service');
+    }
+
     setGeneratedReview(fallbackReview);
     setEditedReview(fallbackReview);
+    setRecentReviewsHistory((prev) => [fallbackReview, ...prev.filter(p => p !== fallbackReview)].slice(0, 8));
     setIsGenerating(false);
 
     try {

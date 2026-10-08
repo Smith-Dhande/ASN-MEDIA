@@ -41,8 +41,7 @@ exports.markAllAsRead = async (req, res, next) => {
   }
 };
 
-// @desc    Create notification
-// @route   POST /api/notifications
+
 exports.createNotification = async (req, res, next) => {
   try {
     const notification = await Notification.create(req.body);
