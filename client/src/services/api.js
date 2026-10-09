@@ -3,7 +3,10 @@
  * Connects Frontend directly to Backend REST APIs & MongoDB Database
  */
 
-const API_BASE = '/api';
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+export const API_BASE = rawBaseUrl
+  ? (rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`)
+  : '/api';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('asn_token');

@@ -12,6 +12,7 @@ import {
 import { mockData } from '../admin/data/mockData';
 import reviewsPoolData from '../data/reviewsPool.json';
 import { generateInputBasedReview } from '../utils/reviewGenerator';
+import { API_BASE } from '../services/api';
 
 const DEFAULT_QUESTIONS = [
   {
@@ -325,7 +326,7 @@ export const PublicReviewScanner = () => {
     const targetSlug = String(slug || '').trim();
     if (!targetSlug) return;
     try {
-      const res = await fetch(`/api/scanners/public/${encodeURIComponent(targetSlug)}/reviews`);
+      const res = await fetch(`${API_BASE}/scanners/public/${encodeURIComponent(targetSlug)}/reviews`);
       if (res.ok) {
         const json = await res.json();
         if (Array.isArray(json.data)) {
@@ -374,9 +375,9 @@ export const PublicReviewScanner = () => {
 
     // 1. Try Backend Server API endpoints
     const endpoints = [
-      `/api/scanners/public/${encodeURIComponent(targetSlug)}`,
-      `/api/review-scanners/public/${encodeURIComponent(targetSlug)}`,
-      `http://localhost:5000/api/scanners/public/${encodeURIComponent(targetSlug)}`
+      `${API_BASE}/scanners/public/${encodeURIComponent(targetSlug)}`,
+      `${API_BASE}/review-scanners/public/${encodeURIComponent(targetSlug)}`,
+      `/api/scanners/public/${encodeURIComponent(targetSlug)}`
     ];
 
     for (const url of endpoints) {
@@ -522,7 +523,7 @@ export const PublicReviewScanner = () => {
       .filter(item => item.answer && String(item.answer).trim());
 
     try {
-      const res = await fetch(`/api/scanners/public/${encodeURIComponent(slug || targetScanner?.slug || 'scanner')}/generate-review`, {
+      const res = await fetch(`${API_BASE}/scanners/public/${encodeURIComponent(slug || targetScanner?.slug || 'scanner')}/generate-review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -683,7 +684,7 @@ export const PublicReviewScanner = () => {
 
     // Record interaction metric
     try {
-      fetch(`/api/scanners/public/${encodeURIComponent(slug || 'scanner')}/events`, {
+      fetch(`${API_BASE}/scanners/public/${encodeURIComponent(slug || 'scanner')}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventType: 'GOOGLE_CLICKED', rating, metadata: { selectedChip, selectedLanguage } })
@@ -712,7 +713,7 @@ export const PublicReviewScanner = () => {
     const finalReviewText = editedReview || generatedReview;
 
     try {
-      const res = await fetch(`/api/scanners/public/${encodeURIComponent(slug || 'scanner')}/submit-review`, {
+      const res = await fetch(`${API_BASE}/scanners/public/${encodeURIComponent(slug || 'scanner')}/submit-review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

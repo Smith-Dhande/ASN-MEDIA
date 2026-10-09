@@ -79,7 +79,7 @@ export const AdminDashboard = () => {
     {
       header: 'SUBMITTED DATE',
       key: 'dateSubmitted',
-      render: (row) => <span className="font-mono text-[10px] text-[#685C43]">{row.dateSubmitted || '2026-09-26'}</span>,
+      render: (row) => <span className="font-mono text-[10px] text-[#685C43]">{row.dateSubmitted || (row.createdAt ? new Date(row.createdAt).toISOString().split('T')[0] : 'N/A')}</span>,
     },
     {
       header: 'STATUS',
@@ -116,7 +116,7 @@ export const AdminDashboard = () => {
       header: 'MONTHLY RETAINER',
       key: 'monthlyRetainer',
       render: (row) => (
-        <span className="font-mono font-bold text-[#111111] text-xs">₹{(row.monthlyRetainer || 0).toLocaleString()}/mo</span>
+        <span className="font-mono font-bold text-[#111111] text-xs">₹{(row.monthlyRetainer || 0).toLocaleString('en-IN')}/mo</span>
       ),
     },
     {
@@ -130,6 +130,11 @@ export const AdminDashboard = () => {
       render: (row) => <StatusBadge status={row.status} />,
     },
   ];
+
+  const now = new Date();
+  const currentMonthName = now.toLocaleString('default', { month: 'short' });
+  const currentYear = now.getFullYear();
+  const lastDayOfMonth = new Date(currentYear, now.getMonth() + 1, 0).getDate();
 
   return (
     <div className="space-y-4 animate-fadeIn pb-8 font-body">
@@ -167,7 +172,7 @@ export const AdminDashboard = () => {
           {/* Custom Date Range Pill */}
           <div className="flex items-center gap-1.5 pl-2 pr-2.5 py-1 bg-[#FAF8F3] text-[#221C11] rounded-lg border border-[#0A0A0A]/06 text-[11px] font-mono font-semibold">
             <Calendar className="w-3.5 h-3.5 text-[#8E722A]" />
-            <span>1 Sep 2026 – 30 Sep 2026</span>
+            <span>1 {currentMonthName} {currentYear} – {lastDayOfMonth} {currentMonthName} {currentYear}</span>
           </div>
         </div>
       </div>
@@ -178,9 +183,8 @@ export const AdminDashboard = () => {
         <KpiCard
           isFeatured
           label="Total Payment Collected"
-          value={`₹${(dashboardMetrics?.totalPaymentCollected || 0).toLocaleString()}`}
-          trend={+14.5}
-          trendLabel="vs last month"
+          value={`₹${(dashboardMetrics?.totalPaymentCollected || 0).toLocaleString('en-IN')}`}
+          trendLabel="settled retainer revenue"
           icon={CreditCard}
           to="/admin/payments"
         />

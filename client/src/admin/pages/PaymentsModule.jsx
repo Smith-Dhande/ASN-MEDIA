@@ -65,16 +65,16 @@ export const PaymentsModule = () => {
 
   // Form State for Recording Payment / Creating Invoice
   const [paymentForm, setPaymentForm] = useState({
-    invoiceNumber: `INV-2026-09${payments.length + 10}`,
-    clientName: clients[0]?.name || 'Aura Luxury Beauty',
-    packageName: packages[0]?.name || 'Social Media Retainer (Tier A)',
-    amount: '4500',
-    amountReceived: '4500',
+    invoiceNumber: `INV-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}${String(payments.length + 1).padStart(2, '0')}`,
+    clientName: clients[0]?.name || '',
+    packageName: packages[0]?.name || '',
+    amount: '',
+    amountReceived: '',
     method: 'Bank Transfer',
     date: new Date().toISOString().split('T')[0],
-    dueDate: '2026-10-15',
+    dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     status: 'Paid',
-    notes: 'Standard retainer invoice',
+    notes: '',
   });
 
   useEffect(() => {
@@ -151,16 +151,16 @@ export const PaymentsModule = () => {
 
   const handleOpenCreatePayment = () => {
     setPaymentForm({
-      invoiceNumber: `INV-2026-09${payments.length + 10}`,
-      clientName: clients[0]?.name || 'Aura Luxury Beauty',
-      packageName: packages[0]?.name || 'Social Media Retainer (Tier A)',
-      amount: '4500',
-      amountReceived: '4500',
+      invoiceNumber: `INV-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}${String(payments.length + 1).padStart(2, '0')}`,
+      clientName: clients[0]?.name || '',
+      packageName: packages[0]?.name || '',
+      amount: '',
+      amountReceived: '',
       method: 'Bank Transfer',
       date: new Date().toISOString().split('T')[0],
-      dueDate: '2026-10-15',
+      dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       status: 'Paid',
-      notes: 'Standard retainer invoice',
+      notes: '',
     });
     setIsRecordModalOpen(true);
     navigate('/admin/payments/create');
@@ -172,9 +172,9 @@ export const PaymentsModule = () => {
 
     addPayment({
       ...paymentForm,
-      clientId: clientObj?.id || 'cli_101',
-      amount: Number(paymentForm.amount),
-      amountReceived: Number(paymentForm.amountReceived),
+      clientId: clientObj?.id || clientObj?._id || '',
+      amount: Number(paymentForm.amount) || 0,
+      amountReceived: Number(paymentForm.amountReceived) || 0,
     });
 
     setIsRecordModalOpen(false);

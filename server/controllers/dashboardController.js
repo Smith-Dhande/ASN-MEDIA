@@ -37,15 +37,20 @@ exports.getDashboardMetrics = async (req, res, next) => {
       Task.find({ status: { $ne: 'Completed' } })
     ]);
 
-    const totalCollected = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-    const outstandingPayments = allClients.reduce((acc, c) => acc + (Number(c.outstandingBalance) || 0), 0);
+    const paidPayments = payments.filter(p => p.status === 'Paid');
+    const totalCollected = paidPayments.reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0);
+    const outstandingPayments = payments
+      .filter(p => p.status === 'Overdue' || p.status === 'Pending' || p.status === 'Partially Paid')
+      .reduce((acc, p) => acc + ((Number(p.amount) || 0) - (Number(p.amountReceived) || 0)), 0)
+      + allClients.reduce((acc, c) => acc + (Number(c.outstandingBalance) || 0), 0);
     const totalScans = scanners.reduce((acc, s) => acc + (Number(s.totalScans) || 0), 0);
 
-    // Expiring packages within 7 days
+    // Expiring packages within 30 days (before a month)
     const expiringPackages = allClients.filter(c => {
-      if (!c.packageExpiryDate) return false;
-      const diffDays = (new Date(c.packageExpiryDate) - new Date()) / (1000 * 3600 * 24);
-      return diffDays >= 0 && diffDays <= 7;
+      const exp = c.packageExpiryDate || c.expiryDate;
+      if (!exp) return false;
+      const diffDays = (new Date(exp) - new Date()) / (1000 * 3600 * 24);
+      return diffDays <= 30;
     });
 
     // Overdue tasks
@@ -59,12 +64,15 @@ exports.getDashboardMetrics = async (req, res, next) => {
         pendingClients,
         completedClients,
         newLeads,
+        newEnquiries: newLeads,
         totalLeads,
         activeProjects,
         pendingTasks,
         totalCollected,
+        totalPaymentCollected: totalCollected,
         outstandingPayments,
         activeScannersCount: scanners.length,
+        activeReviewScanners: scanners.length,
         totalScans,
         expiringPackagesCount: expiringPackages.length,
         overdueTasksCount: overdueTasks.length

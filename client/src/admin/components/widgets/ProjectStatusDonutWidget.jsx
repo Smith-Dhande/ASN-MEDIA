@@ -1,20 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { ASN_CHART_COLORS, AsnCustomTooltip } from '../charts/asnChartTheme';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
-
-const projectDistributionData = [
-  { name: 'Active', value: 8, color: ASN_CHART_COLORS.goldPrimary },
-  { name: 'Pending', value: 3, color: ASN_CHART_COLORS.charcoal },
-  { name: 'Completed', value: 2, color: ASN_CHART_COLORS.emerald },
-  { name: 'On Hold', value: 1, color: '#D5C7A5' },
-];
+import { useAdminData } from '../../context/AdminDataContext';
 
 export const ProjectStatusDonutWidget = () => {
+  const { projects = [] } = useAdminData();
   const [activeIndex, setActiveIndex] = useState(null);
 
-  const totalProjects = projectDistributionData.reduce((acc, curr) => acc + curr.value, 0);
+  const projectDistributionData = useMemo(() => {
+    const activeCount = (projects || []).filter((p) => p.status === 'In Progress' || p.status === 'Active').length;
+    const pendingCount = (projects || []).filter((p) => p.status === 'Planning' || p.status === 'Pending').length;
+    const completedCount = (projects || []).filter((p) => p.status === 'Completed').length;
+    const onHoldCount = (projects || []).filter((p) => p.status === 'On Hold' || p.status === 'Review').length;
+
+    return [
+      { name: 'Active', value: activeCount, color: ASN_CHART_COLORS.goldPrimary },
+      { name: 'Planning', value: pendingCount, color: ASN_CHART_COLORS.charcoal },
+      { name: 'Completed', value: completedCount, color: ASN_CHART_COLORS.emerald },
+      { name: 'On Hold', value: onHoldCount, color: '#D5C7A5' },
+    ];
+  }, [projects]);
+
+  const totalProjects = (projects || []).length;
+
+  // Render chart data (if 0 projects, render a subtle empty ring)
+  const chartData = useMemo(() => {
+    if (totalProjects === 0) {
+      return [{ name: 'No Projects', value: 1, color: '#E5D9BC' }];
+    }
+    return projectDistributionData.filter((d) => d.value > 0);
+  }, [totalProjects, projectDistributionData]);
 
   return (
     <div className="bg-white rounded-xl p-5 shadow-2xs border border-[#0A0A0A]/06 h-full flex flex-col justify-between">
@@ -43,37 +60,37 @@ export const ProjectStatusDonutWidget = () => {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={projectDistributionData}
+                data={chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={44}
                 outerRadius={86}
-                paddingAngle={4}
+                paddingAngle={totalProjects > 0 ? 4 : 0}
                 dataKey="value"
-                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onMouseEnter={(_, index) => totalProjects > 0 && setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
                 animationDuration={800}
                 animationEasing="ease-out"
               >
-                {projectDistributionData.map((entry, index) => {
+                {chartData.map((entry, index) => {
                   const isHovered = activeIndex === index;
                   return (
                     <Cell
                       key={`cell-${index}`}
                       fill={entry.color}
                       stroke="#FFFFFF"
-                      strokeWidth={3}
+                      strokeWidth={totalProjects > 0 ? 3 : 1}
                       className="transition-all duration-300 cursor-pointer"
                       style={{
-                        transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                        transform: isHovered && totalProjects > 0 ? 'scale(1.04)' : 'scale(1)',
                         transformOrigin: 'center center',
-                        filter: isHovered ? 'drop-shadow(0px 4px 8px rgba(10,10,10,0.15))' : 'none',
+                        filter: isHovered && totalProjects > 0 ? 'drop-shadow(0px 4px 8px rgba(10,10,10,0.15))' : 'none',
                       }}
                     />
                   );
                 })}
               </Pie>
-              <Tooltip content={<AsnCustomTooltip unit="" />} />
+              {totalProjects > 0 && <Tooltip content={<AsnCustomTooltip unit="" />} />}
             </PieChart>
           </ResponsiveContainer>
 
@@ -96,7 +113,7 @@ export const ProjectStatusDonutWidget = () => {
           return (
             <div
               key={item.name}
-              onMouseEnter={() => setActiveIndex(index)}
+              onMouseEnter={() => totalProjects > 0 && setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(null)}
               className={`p-2 rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-between ${
                 isSelected ? 'bg-[#FAF8F3] border border-[#0A0A0A]/10' : 'bg-transparent'

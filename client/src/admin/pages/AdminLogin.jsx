@@ -57,7 +57,7 @@ export const AdminLogin = () => {
             Admin Authentication
           </h1>
           <p className="text-xs text-white/70 font-body">
-            Enter your credentials to access live client records, marketing packages, payments, and AI review scanners.
+            Enter the credentials to access live client records, marketing packages, payments, and AI review scanners.
           </p>
         </div>
 

@@ -1,53 +1,83 @@
-import React, { useState } from 'react';
-import { TrendingUp, ArrowUpRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useAdminData } from '../../context/AdminDataContext';
 
-const chartData = {
-  revenue: [
-    { label: 'Jan', value: 48500 },
-    { label: 'Feb', value: 62000 },
-    { label: 'Mar', value: 89000 },
-    { label: 'Apr', value: 74000 },
-    { label: 'May', value: 105000 },
-    { label: 'Jun', value: 92000 },
-    { label: 'Jul', value: 118000 },
-    { label: 'Aug', value: 135000 },
-    { label: 'Sep', value: 84500 },
-  ],
-  clients: [
-    { label: 'Jan', value: 12 },
-    { label: 'Feb', value: 14 },
-    { label: 'Mar', value: 16 },
-    { label: 'Apr', value: 18 },
-    { label: 'May', value: 20 },
-    { label: 'Jun', value: 21 },
-    { label: 'Jul', value: 22 },
-    { label: 'Aug', value: 23 },
-    { label: 'Sep', value: 24 },
-  ],
-  enquiries: [
-    { label: 'Jan', value: 5 },
-    { label: 'Feb', value: 7 },
-    { label: 'Mar', value: 10 },
-    { label: 'Apr', value: 6 },
-    { label: 'May', value: 11 },
-    { label: 'Jun', value: 8 },
-    { label: 'Jul', value: 12 },
-    { label: 'Aug', value: 14 },
-    { label: 'Sep', value: 9 },
-  ],
-};
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const AnalyticsChart = () => {
+  const { payments = [], clients = [], enquiries = [] } = useAdminData();
   const [activeTab, setActiveTab] = useState('revenue');
   const [hoveredBarIndex, setHoveredBarIndex] = useState(null);
 
+  const currentMonthIdx = new Date().getMonth();
+
+  const chartData = useMemo(() => {
+    const endMonthIdx = Math.max(currentMonthIdx, 8);
+    const monthsToShow = MONTH_NAMES.slice(0, endMonthIdx + 1);
+
+    const revenueSeries = monthsToShow.map((mName, mIdx) => {
+      const val = (payments || [])
+        .filter((p) => {
+          const isPaid = p.status === 'Paid' || (Number(p.amountReceived) > 0);
+          if (!isPaid) return false;
+          const dStr = p.date || p.createdAt;
+          if (!dStr) return false;
+          return new Date(dStr).getMonth() === mIdx;
+        })
+        .reduce((sum, p) => sum + (Number(p.amountReceived) || Number(p.amount) || 0), 0);
+      return { label: mName, value: val };
+    });
+
+    const clientSeries = monthsToShow.map((mName, mIdx) => {
+      const val = (clients || []).filter((c) => {
+        const dStr = c.startDate || c.createdAt;
+        if (!dStr) return false;
+        return new Date(dStr).getMonth() === mIdx;
+      }).length;
+      return { label: mName, value: val };
+    });
+
+    const enquirySeries = monthsToShow.map((mName, mIdx) => {
+      const val = (enquiries || []).filter((e) => {
+        const dStr = e.dateSubmitted || e.createdAt;
+        if (!dStr) return false;
+        return new Date(dStr).getMonth() === mIdx;
+      }).length;
+      return { label: mName, value: val };
+    });
+
+    return {
+      revenue: revenueSeries,
+      clients: clientSeries,
+      enquiries: enquirySeries,
+    };
+  }, [payments, clients, enquiries, currentMonthIdx]);
+
   const activeSeries = chartData[activeTab];
-  const maxValue = Math.max(...activeSeries.map((d) => d.value)) * 1.15;
+  const calculatedMax = Math.max(...activeSeries.map((d) => d.value), 0);
+  const maxValue = calculatedMax > 0 ? calculatedMax * 1.15 : (activeTab === 'revenue' ? 10000 : 5);
+
+  const totalYtdRevenue = useMemo(() => {
+    return (payments || [])
+      .filter((p) => p.status === 'Paid' || Number(p.amountReceived) > 0)
+      .reduce((sum, p) => sum + (Number(p.amountReceived) || Number(p.amount) || 0), 0);
+  }, [payments]);
 
   const tabLabels = {
-    revenue: { title: 'Payment Collection & Revenue Stream', unit: '₹', format: (val) => `₹${(val / 1000).toFixed(0)}k` },
-    clients: { title: 'Client Portfolio Growth', unit: '', format: (val) => `${val}` },
-    enquiries: { title: 'Website Enquiry Submissions', unit: '', format: (val) => `${val}` },
+    revenue: {
+      title: 'Payment Collection & Revenue Stream',
+      unit: '₹',
+      format: (val) => (val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
+    },
+    clients: {
+      title: 'Client Portfolio Growth',
+      unit: '',
+      format: (val) => `${val}`,
+    },
+    enquiries: {
+      title: 'Website Enquiry Submissions',
+      unit: '',
+      format: (val) => `${val}`,
+    },
   };
 
   return (
@@ -60,7 +90,7 @@ export const AnalyticsChart = () => {
               PERFORMANCE ANALYTICS
             </span>
             <span className="text-[#0A0A0A]/20">•</span>
-            <span className="text-[10px] font-mono text-[#685C43]">2026 YTD</span>
+            <span className="text-[10px] font-mono text-[#685C43]">{new Date().getFullYear()} YTD</span>
           </div>
           <h2 className="font-display text-xl sm:text-2xl font-normal text-[#111111] tracking-tight">
             {tabLabels[activeTab].title}
@@ -127,9 +157,10 @@ export const AnalyticsChart = () => {
             {activeSeries.map((item, index) => {
               const xSlot = 45 + index * ((740 - 45) / activeSeries.length) + 16;
               const barWidth = 32;
-              const barHeight = (item.value / maxValue) * 140;
+              const barHeight = maxValue > 0 ? (item.value / maxValue) * 140 : 0;
               const yPos = 160 - barHeight;
               const isHovered = hoveredBarIndex === index;
+              const isCurrent = index === currentMonthIdx;
 
               return (
                 <g
@@ -143,30 +174,33 @@ export const AnalyticsChart = () => {
                     x={xSlot}
                     y={yPos}
                     width={barWidth}
-                    height={barHeight}
-                    fill={isHovered ? '#111111' : index === activeSeries.length - 1 ? '#8E722A' : '#C8A13A'}
+                    height={Math.max(barHeight, item.value > 0 ? 4 : 0)}
+                    fill={isHovered ? '#111111' : isCurrent ? '#8E722A' : item.value > 0 ? '#C8A13A' : '#E5D9BC'}
+                    opacity={item.value === 0 ? 0.3 : 1}
                     rx="4"
                     className="transition-colors duration-200"
                   />
 
                   {/* Top Accent Line on Bar */}
-                  <rect
-                    x={xSlot}
-                    y={yPos}
-                    width={barWidth}
-                    height={3}
-                    fill="#111111"
-                    rx="1.5"
-                  />
+                  {item.value > 0 && (
+                    <rect
+                      x={xSlot}
+                      y={yPos}
+                      width={barWidth}
+                      height={3}
+                      fill="#111111"
+                      rx="1.5"
+                    />
+                  )}
 
                   {/* X-Axis Label */}
                   <text
                     x={xSlot + barWidth / 2}
                     y="180"
-                    fill={isHovered ? '#111111' : '#685C43'}
+                    fill={isHovered || isCurrent ? '#111111' : '#685C43'}
                     fontSize="10"
                     fontFamily="monospace"
-                    fontWeight={isHovered ? 'bold' : 'normal'}
+                    fontWeight={isHovered || isCurrent ? 'bold' : 'normal'}
                     textAnchor="middle"
                   >
                     {item.label}
@@ -186,11 +220,11 @@ export const AnalyticsChart = () => {
               }}
             >
               <div className="font-bold text-[#C8A13A]">
-                {activeSeries[hoveredBarIndex].label} 2026
+                {activeSeries[hoveredBarIndex].label} {new Date().getFullYear()}
               </div>
               <div className="text-white font-bold mt-0.5">
                 {tabLabels[activeTab].unit}
-                {activeSeries[hoveredBarIndex].value.toLocaleString()}
+                {activeSeries[hoveredBarIndex].value.toLocaleString('en-IN')}
               </div>
             </div>
           )}
@@ -201,7 +235,7 @@ export const AnalyticsChart = () => {
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-xs bg-[#8E722A]" />
-              <span>Current Month (Sep)</span>
+              <span>Current Month ({MONTH_NAMES[currentMonthIdx]})</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-xs bg-[#C8A13A]" />
@@ -210,7 +244,7 @@ export const AnalyticsChart = () => {
           </div>
 
           <div className="hidden sm:flex items-center gap-1 text-[#111111] font-mono text-[11px]">
-            <span>Total YTD Revenue: <strong>₹84,500</strong></span>
+            <span>Total YTD Revenue: <strong>₹{totalYtdRevenue.toLocaleString('en-IN')}</strong></span>
           </div>
         </div>
       </div>

@@ -412,7 +412,7 @@ export const ScannerDetailView = ({
 
           <button
             type="button"
-            onClick={() => onEdit(scanner)}
+            onClick={() => onEdit ? onEdit(scanner) : navigate(`/admin/scanners/edit/${scanner.id || scanner._id || scanner.slug}`)}
             className="px-3.5 py-2 rounded-lg bg-[#111] text-white text-sm font-medium hover:bg-[#8E722A] inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs"
           >
             <Edit2 className="w-4 h-4" />

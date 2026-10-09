@@ -1,9 +1,7 @@
 const jwt = require('jsonwebtoken');
 const Staff = require('../models/Staff');
 
-/**
- * Protect routes - Verifies JWT Bearer Token
- */
+
 const protect = async (req, res, next) => {
   let token;
 
@@ -11,7 +9,7 @@ const protect = async (req, res, next) => {
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
-    // Set token from Bearer token in header
+
     token = req.headers.authorization.split(' ')[1];
   }
 
@@ -33,7 +31,7 @@ const protect = async (req, res, next) => {
     const user = await Staff.findById(decoded.id);
 
     if (!user) {
-      // User might be decoded directly
+
       req.user = decoded;
       return next();
     }
@@ -56,9 +54,7 @@ const protect = async (req, res, next) => {
   }
 };
 
-/**
- * Grant access to specific roles
- */
+
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

@@ -748,16 +748,65 @@ exports.updateScanner = async (req, res, next) => {
     delete data._id;
     delete data.id;
 
-    if (data.businessName || data.clientName || data.name) {
-      data.businessName = (data.businessName || data.clientName || data.name || '').trim();
-      data.clientName = (data.clientName || data.businessName).trim();
-      data.name = (data.name || data.businessName).trim();
+    // Find existing scanner first
+    let scanner = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      scanner = await Scanner.findById(req.params.id);
+    }
+    if (!scanner) {
+      scanner = await Scanner.findOne({ slug: req.params.id });
+    }
+    if (!scanner) {
+      return res.status(404).json({ success: false, message: 'Scanner not found' });
     }
 
+    // Name & Business Name fields
+    if (data.clientName !== undefined) {
+      data.clientName = String(data.clientName || '').trim();
+      if (!data.businessName) data.businessName = data.clientName;
+    }
+    if (data.businessName !== undefined) {
+      data.businessName = String(data.businessName || '').trim();
+      if (!data.clientName) data.clientName = data.businessName;
+    }
+    if (data.name !== undefined) {
+      data.name = String(data.name || '').trim();
+      if (!data.placeName) data.placeName = data.name;
+    }
+    if (data.placeName !== undefined) {
+      data.placeName = String(data.placeName || '').trim();
+    }
+
+    // Handle slug uniqueness if slug is being updated
+    if (data.slug !== undefined) {
+      const cleanSlug = String(data.slug || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      if (!cleanSlug) {
+        return res.status(400).json({ success: false, message: 'URL slug cannot be empty.' });
+      }
+
+      data.slug = cleanSlug;
+
+      if (data.slug !== scanner.slug) {
+        const existing = await Scanner.findOne({ slug: data.slug, _id: { $ne: scanner._id } });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: `URL slug "${data.slug}" is already used by another scanner. Please choose a unique slug.`
+          });
+        }
+      }
+    }
+
+    // Handle Google links & Place ID
     if (data.placeId !== undefined || data.googleUrl !== undefined || data.googleReviewUrl !== undefined) {
-      let pId = (data.placeId || '').trim();
-      let gUrl = (data.googleUrl || '').trim();
-      let gReviewUrl = (data.googleReviewUrl || '').trim();
+      let pId = (data.placeId !== undefined ? data.placeId : (scanner.placeId || '')).trim();
+      let gUrl = (data.googleUrl !== undefined ? data.googleUrl : (scanner.googleUrl || '')).trim();
+      let gReviewUrl = (data.googleReviewUrl !== undefined ? data.googleReviewUrl : (scanner.googleReviewUrl || '')).trim();
 
       if (pId && (!gReviewUrl || !gReviewUrl.includes('writereview'))) {
         gReviewUrl = `https://search.google.com/local/writereview?placeid=${pId}`;
@@ -780,44 +829,102 @@ exports.updateScanner = async (req, res, next) => {
       data.googleReviewUrl = gReviewUrl;
     }
 
-    if (data.isDemo && data.demoDurationMinutes > 0 && !data.demoExpiresAt) {
-      data.demoExpiresAt = new Date(Date.now() + Number(data.demoDurationMinutes) * 60 * 1000);
-      data.autoPauseAt = data.demoExpiresAt;
-      data.autoPauseEnabled = true;
-    } else if (data.autoPauseEnabled && data.autoPauseDurationMinutes > 0) {
-      data.autoPauseAt = new Date(Date.now() + Number(data.autoPauseDurationMinutes) * 60 * 1000);
-    } else if (data.autoPauseEnabled === false && !data.isDemo) {
-      data.autoPauseAt = null;
+    // Demo / Auto-Pause Schedule handling
+    if (data.isDemo !== undefined) {
+      data.isDemo = Boolean(data.isDemo);
+      if (data.isDemo) {
+        const dur = Number(data.demoDurationMinutes) || 60;
+        data.demoDurationMinutes = dur;
+        if (!data.demoExpiresAt) {
+          data.demoExpiresAt = new Date(Date.now() + dur * 60 * 1000);
+        } else {
+          data.demoExpiresAt = new Date(data.demoExpiresAt);
+        }
+        data.autoPauseAt = data.demoExpiresAt;
+        data.autoPauseEnabled = true;
+      }
     }
 
-    let scanner = null;
-    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-      scanner = await Scanner.findByIdAndUpdate(req.params.id, data, {
-        new: true,
-        runValidators: true
-      });
-    }
-    if (!scanner) {
-      scanner = await Scanner.findOneAndUpdate({ slug: req.params.id }, data, {
-        new: true,
-        runValidators: true
-      });
-    }
-
-    if (!scanner) {
-      return res.status(404).json({ success: false, message: 'Scanner not found' });
+    if (data.autoPauseEnabled !== undefined && !data.isDemo) {
+      if (data.autoPauseEnabled) {
+        if (data.autoPauseDurationMinutes > 0) {
+          data.autoPauseAt = new Date(Date.now() + Number(data.autoPauseDurationMinutes) * 60 * 1000);
+        } else if (data.autoPauseAt) {
+          data.autoPauseAt = new Date(data.autoPauseAt);
+        }
+      } else {
+        data.autoPauseAt = null;
+        data.autoPauseDurationMinutes = 0;
+      }
     }
 
-    if (scanner.clientId) {
+    // Ensure questions array is cleanly handled
+    if (data.questions !== undefined && Array.isArray(data.questions)) {
+      data.questions = data.questions.map((q, idx) => ({
+        id: q.id || `q_${Date.now()}_${idx}`,
+        question: String(q.question || '').trim(),
+        type: q.type || 'dropdown',
+        required: q.required !== false,
+        options: Array.isArray(q.options)
+          ? q.options.map((opt, oi) => {
+              const label = typeof opt === 'string' ? opt : (opt.label || opt.value || '');
+              const val = typeof opt === 'string' ? opt : (opt.value || opt.label || '');
+              return {
+                id: (opt && opt.id) ? opt.id : `opt_${Date.now()}_${oi}`,
+                label: String(label).trim(),
+                value: String(val).trim(),
+                isActive: opt.isActive !== false
+              };
+            }).filter(o => o.label.length > 0)
+          : []
+      }));
+    }
+
+    // Ensure doctors array is cleanly handled
+    if (data.doctors !== undefined && Array.isArray(data.doctors)) {
+      data.doctors = data.doctors.map((d, di) => ({
+        id: d.id || `doc_${Date.now()}_${di}`,
+        name: String(d.name || '').trim(),
+        department: String(d.department || 'General').trim(),
+        qualification: String(d.qualification || '').trim(),
+        available: d.available !== false
+      })).filter(d => d.name.length > 0);
+    }
+
+    // Ensure hospitalServices array is cleanly handled
+    if (data.hospitalServices !== undefined && Array.isArray(data.hospitalServices)) {
+      data.hospitalServices = data.hospitalServices
+        .map(s => String(s || '').trim())
+        .filter(Boolean);
+    }
+
+    // Apply updates
+    Object.assign(scanner, data);
+    const updatedScanner = await scanner.save();
+
+    // Sync with Client record if attached
+    if (updatedScanner.clientId) {
       try {
-        await Client.findByIdAndUpdate(scanner.clientId, {
-          scannerId: scanner._id.toString(),
-          reviewScannerId: scanner._id.toString()
+        await Client.findByIdAndUpdate(updatedScanner.clientId, {
+          scannerId: updatedScanner._id.toString(),
+          reviewScannerId: updatedScanner._id.toString()
         });
       } catch (e) {}
     }
 
-    res.status(200).json({ success: true, data: scanner });
+    // Create activity log
+    try {
+      await ActivityLog.create({
+        user: req.user?.name || 'Admin',
+        userRole: req.user?.role || 'Admin',
+        action: 'Scanner Updated',
+        target: `Scanner: ${updatedScanner.name || updatedScanner.clientName}`,
+        details: `Updated configuration for review scanner ${updatedScanner.name || updatedScanner.clientName}`,
+        category: 'scanners'
+      });
+    } catch (e) {}
+
+    res.status(200).json({ success: true, data: updatedScanner });
   } catch (err) {
     console.error('Error updating scanner in DB:', err);
     next(err);

@@ -4,6 +4,7 @@ import { Reveal } from '../components/ui/Reveal';
 import { siteConfig } from '../data/site';
 import { servicesData } from '../data/services';
 import { Mail, Phone, MapPin, CheckCircle, AlertCircle, Loader2, ArrowUpRight } from 'lucide-react';
+import { api } from '../services/api';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
@@ -78,32 +79,21 @@ export const Contact = () => {
     setIsSubmitting(true);
     setSubmitError('');
 
-    fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerName: formData.name,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone || '+91 98765 00000',
-        businessName: formData.company || `${formData.name}'s Brand`,
-        company: formData.company || `${formData.name}'s Brand`,
-        serviceInterested: formData.service,
-        serviceRequested: formData.service,
-        budgetTier: formData.budget,
-        timeline: formData.timeline,
-        message: formData.description,
-        description: formData.description,
-        source: 'Website Contact Page'
-      })
+    api.leads.create({
+      customerName: formData.name,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone || '+91 98765 00000',
+      businessName: formData.company || `${formData.name}'s Brand`,
+      company: formData.company || `${formData.name}'s Brand`,
+      serviceInterested: formData.service,
+      serviceRequested: formData.service,
+      budgetTier: formData.budget,
+      timeline: formData.timeline,
+      message: formData.description,
+      description: formData.description,
+      source: 'Website Contact Page'
     })
-      .then(async (res) => {
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || 'Failed to submit enquiry.');
-        }
-        return res.json();
-      })
       .then(() => {
         setIsSubmitting(false);
         setIsSubmitted(true);

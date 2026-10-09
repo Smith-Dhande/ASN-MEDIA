@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -20,8 +20,10 @@ import { ReportsSkeleton } from '../components/ui/LoadingSkeleton';
 import { KpiCard } from '../components/ui/KpiCard';
 import { TrendingUp, Download, Calendar, DollarSign, Users, Briefcase, FileText, CheckCircle2, FileSpreadsheet, Filter, AlertTriangle } from 'lucide-react';
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 export const ReportsModule = () => {
-  const { clients, projects, payments, services, packages, staff } = useAdminData();
+  const { clients = [], projects = [], payments = [], services = [], packages = [], staff = [] } = useAdminData();
   const [selectedPeriod, setSelectedPeriod] = useState('This Quarter');
   const [clientFilter, setClientFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
@@ -36,48 +38,114 @@ export const ReportsModule = () => {
     return () => clearTimeout(timer);
   }, [selectedPeriod, clientFilter, serviceFilter, staffFilter]);
 
-  if (loading) {
-    return <ReportsSkeleton />;
-  }
-
   // Filtered dataset calculations
-  const filteredProjects = projects.filter((p) => {
-    const matchClient = clientFilter === 'All' || p.clientName === clientFilter;
-    const matchService = serviceFilter === 'All' || p.serviceName === serviceFilter;
-    const matchStaff = staffFilter === 'All' || p.leadStaff === staffFilter;
-    return matchClient && matchService && matchStaff;
-  });
+  const filteredProjects = useMemo(() => {
+    return (projects || []).filter((p) => {
+      const matchClient = clientFilter === 'All' || p.clientName === clientFilter;
+      const matchService = serviceFilter === 'All' || p.serviceName === serviceFilter;
+      const matchStaff = staffFilter === 'All' || p.leadStaff === staffFilter;
+      return matchClient && matchService && matchStaff;
+    });
+  }, [projects, clientFilter, serviceFilter, staffFilter]);
 
-  const filteredPayments = payments.filter((pay) => {
-    const matchClient = clientFilter === 'All' || pay.clientName === clientFilter;
-    return matchClient;
-  });
+  const filteredPayments = useMemo(() => {
+    return (payments || []).filter((pay) => {
+      const matchClient = clientFilter === 'All' || pay.clientName === clientFilter;
+      return matchClient;
+    });
+  }, [payments, clientFilter]);
 
-  // Reporting monthly revenue data
-  const revenueReportData = [
-    { month: 'May', collected: 52000, outstanding: 8500 },
-    { month: 'Jun', collected: 64000, outstanding: 9200 },
-    { month: 'Jul', collected: 71000, outstanding: 11000 },
-    { month: 'Aug', collected: 78500, outstanding: 10400 },
-    { month: 'Sep', collected: payments.filter(p => p.status === 'Paid').reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0) || 84500, outstanding: 12800 },
-  ];
+  const currentMonthIdx = new Date().getMonth();
 
-  // Client growth trajectory data
-  const clientGrowthData = [
-    { month: 'May', total: 16, retainers: 12 },
-    { month: 'Jun', total: 18, retainers: 14 },
-    { month: 'Jul', total: 20, retainers: 15 },
-    { month: 'Aug', total: 22, retainers: 17 },
-    { month: 'Sep', total: clients.length, retainers: clients.filter(c => c.status === 'Active').length },
-  ];
+  // Dynamic reporting monthly revenue data
+  const revenueReportData = useMemo(() => {
+    // Generate last 5 months
+    const startIdx = Math.max(0, currentMonthIdx - 4);
+    const months = MONTH_NAMES.slice(startIdx, currentMonthIdx + 1);
 
-  // Project Category distribution pie data
-  const projectCategoryData = [
-    { name: 'Social Media Retainers', value: projects.filter(p => p.serviceName?.includes('Social')).length || 10, color: '#8E722A' },
-    { name: 'Video Production', value: projects.filter(p => p.serviceName?.includes('Video')).length || 6, color: '#111111' },
-    { name: 'Brand Strategy', value: projects.filter(p => p.serviceName?.includes('Brand')).length || 5, color: '#C8A13A' },
-    { name: 'Content Suite', value: 4, color: '#A39987' },
-  ];
+    return months.map((mName, i) => {
+      const actualMonthIdx = startIdx + i;
+      const mPayments = filteredPayments.filter((p) => {
+        const dStr = p.date || p.createdAt;
+        if (!dStr) return false;
+        return new Date(dStr).getMonth() === actualMonthIdx;
+      });
+
+      const collected = mPayments
+        .filter((p) => p.status === 'Paid' || Number(p.amountReceived) > 0)
+        .reduce((sum, p) => sum + (Number(p.amountReceived) || Number(p.amount) || 0), 0);
+
+      const outstanding = mPayments
+        .filter((p) => p.status === 'Overdue' || p.status === 'Pending' || p.status === 'Partially Paid')
+        .reduce((sum, p) => sum + ((Number(p.amount) || 0) - (Number(p.amountReceived) || 0)), 0);
+
+      return {
+        month: mName,
+        collected,
+        outstanding,
+      };
+    });
+  }, [filteredPayments, currentMonthIdx]);
+
+  // Dynamic client growth trajectory data
+  const clientGrowthData = useMemo(() => {
+    const startIdx = Math.max(0, currentMonthIdx - 4);
+    const months = MONTH_NAMES.slice(startIdx, currentMonthIdx + 1);
+
+    let cumulative = 0;
+    return months.map((mName, i) => {
+      const actualMonthIdx = startIdx + i;
+      const newInMonth = (clients || []).filter((c) => {
+        const dStr = c.startDate || c.createdAt;
+        if (!dStr) return false;
+        return new Date(dStr).getMonth() === actualMonthIdx;
+      }).length;
+
+      cumulative += newInMonth;
+      const total = clients.length > 0 && cumulative === 0 && actualMonthIdx === currentMonthIdx
+        ? clients.length
+        : cumulative;
+
+      const retainers = (clients || []).filter((c) => c.status === 'Active').length;
+
+      return {
+        month: mName,
+        total,
+        retainers: total > 0 ? Math.min(retainers, total) : 0,
+      };
+    });
+  }, [clients, currentMonthIdx]);
+
+  // Project Category distribution pie data - completely dynamic
+  const projectCategoryData = useMemo(() => {
+    const socialCount = filteredProjects.filter((p) => p.serviceName?.toLowerCase().includes('social') || p.category?.toLowerCase().includes('social')).length;
+    const videoCount = filteredProjects.filter((p) => p.serviceName?.toLowerCase().includes('video') || p.category?.toLowerCase().includes('video')).length;
+    const brandCount = filteredProjects.filter((p) => p.serviceName?.toLowerCase().includes('brand') || p.category?.toLowerCase().includes('brand')).length;
+    const otherCount = filteredProjects.filter((p) => {
+      const s = (p.serviceName || '').toLowerCase();
+      const c = (p.category || '').toLowerCase();
+      return !s.includes('social') && !s.includes('video') && !s.includes('brand') && !c.includes('social') && !c.includes('video') && !c.includes('brand');
+    }).length;
+
+    return [
+      { name: 'Social Media Retainers', value: socialCount, color: '#8E722A' },
+      { name: 'Video Production', value: videoCount, color: '#111111' },
+      { name: 'Brand Strategy', value: brandCount, color: '#C8A13A' },
+      { name: 'Other Deliverables', value: otherCount, color: '#A39987' },
+    ];
+  }, [filteredProjects]);
+
+  const totalRevenueCollected = useMemo(() => {
+    return filteredPayments
+      .filter((p) => p.status === 'Paid' || Number(p.amountReceived) > 0)
+      .reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0);
+  }, [filteredPayments]);
+
+  const totalOutstandingDue = useMemo(() => {
+    return filteredPayments
+      .filter((p) => p.status === 'Overdue' || p.status === 'Pending' || p.status === 'Partially Paid')
+      .reduce((acc, p) => acc + ((Number(p.amount) || 0) - (Number(p.amountReceived) || 0)), 0);
+  }, [filteredPayments]);
 
   const handleExport = (format) => {
     setExportNotice(`Exporting ${format} analytical report for period: ${selectedPeriod}...`);
@@ -85,6 +153,14 @@ export const ReportsModule = () => {
       setExportNotice('');
     }, 3000);
   };
+
+  if (loading) {
+    return <ReportsSkeleton />;
+  }
+
+  const pieDataFiltered = filteredProjects.length === 0
+    ? [{ name: 'No Projects', value: 1, color: '#E5D9BC' }]
+    : projectCategoryData.filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6 font-body">
@@ -105,9 +181,9 @@ export const ReportsModule = () => {
               onChange={(e) => setSelectedPeriod(e.target.value)}
               className="bg-transparent text-[#111111] font-semibold focus:outline-none cursor-pointer"
             >
-              <option value="This Month">This Month (Sept 2026)</option>
-              <option value="This Quarter">This Quarter (Q3 2026)</option>
-              <option value="Year to Date">Year to Date (2026)</option>
+              <option value="This Month">This Month ({MONTH_NAMES[currentMonthIdx]} {new Date().getFullYear()})</option>
+              <option value="This Quarter">This Quarter</option>
+              <option value="Year to Date">Year to Date ({new Date().getFullYear()})</option>
               <option value="All Time">All Time</option>
             </select>
           </div>
@@ -149,9 +225,9 @@ export const ReportsModule = () => {
           onChange={(e) => setClientFilter(e.target.value)}
           className="px-2.5 py-1 bg-white border border-[#0A0A0A]/14 rounded-xs text-[#111111]"
         >
-          <option value="All">All Clients</option>
+          <option value="All">All Clients ({clients.length})</option>
           {clients.map((c) => (
-            <option key={c.id} value={c.name}>{c.name}</option>
+            <option key={c.id || c._id} value={c.name}>{c.name}</option>
           ))}
         </select>
 
@@ -160,9 +236,9 @@ export const ReportsModule = () => {
           onChange={(e) => setServiceFilter(e.target.value)}
           className="px-2.5 py-1 bg-white border border-[#0A0A0A]/14 rounded-xs text-[#111111]"
         >
-          <option value="All">All Services</option>
+          <option value="All">All Services ({services.length})</option>
           {services.map((s) => (
-            <option key={s.id} value={s.name}>{s.name}</option>
+            <option key={s.id || s._id} value={s.name}>{s.name}</option>
           ))}
         </select>
 
@@ -171,43 +247,39 @@ export const ReportsModule = () => {
           onChange={(e) => setStaffFilter(e.target.value)}
           className="px-2.5 py-1 bg-white border border-[#0A0A0A]/14 rounded-xs text-[#111111]"
         >
-          <option value="All">All Lead Staff</option>
+          <option value="All">All Lead Staff ({staff.length})</option>
           {staff.map((s) => (
-            <option key={s.id} value={s.name}>{s.name}</option>
+            <option key={s.id || s._id} value={s.name}>{s.name}</option>
           ))}
         </select>
       </div>
 
-      {/* Primary KPI Cards (4 Cards - Stage 4) */}
+      {/* Primary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="TOTAL REVENUE COLLECTED"
-          value={`₹${payments.filter((p) => p.status === 'Paid').reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0).toLocaleString('en-IN')}`}
-          trend={14}
-          trendLabel="vs target"
+          value={`₹${totalRevenueCollected.toLocaleString('en-IN')}`}
+          trendLabel="settled ledger"
           icon={DollarSign}
           accentColor="emerald"
         />
         <KpiCard
           label="ACTIVE RETAINER CLIENTS"
           value={`${clients.filter((c) => c.status === 'Active').length} Active`}
-          trend={8}
-          trendLabel={`out of ${clients.length} accounts`}
+          trendLabel={`out of ${clients.length} total accounts`}
           icon={Users}
           accentColor="gold"
         />
         <KpiCard
           label="FILTERED PROJECTS"
           value={`${filteredProjects.length} Projects`}
-          trend={12}
           trendLabel="in active production"
           icon={Briefcase}
           accentColor="emerald"
         />
         <KpiCard
           label="OUTSTANDING DUE"
-          value={`₹${payments.filter((p) => p.status === 'Overdue' || p.status === 'Pending').reduce((acc, p) => acc + (Number(p.amount) - (Number(p.amountReceived) || 0)), 0).toLocaleString('en-IN')}`}
-          trend={-3}
+          value={`₹${totalOutstandingDue.toLocaleString('en-IN')}`}
           trendLabel="pending ledger"
           icon={AlertTriangle}
           accentColor="amber"
@@ -233,10 +305,10 @@ export const ReportsModule = () => {
               <BarChart data={revenueReportData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#0A0A0A" strokeOpacity={0.06} vertical={false} />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#685C43', fontFamily: 'monospace' }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#685C43', fontFamily: 'monospace' }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#685C43', fontFamily: 'monospace' }} tickFormatter={(val) => `₹${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#111111', borderColor: '#8E722A', borderRadius: '4px', color: '#F7F5EF', fontSize: '11px', fontFamily: 'monospace' }}
-                  formatter={(val) => [`₹${val.toLocaleString('en-IN')}`, '']}
+                  formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, '']}
                 />
                 <Bar dataKey="collected" name="Collected Revenue" fill="#8E722A" radius={[4, 4, 0, 0]} barSize={28} />
                 <Bar dataKey="outstanding" name="Outstanding Due" fill="#C8A13A" opacity={0.5} radius={[4, 4, 0, 0]} barSize={28} />
@@ -262,7 +334,7 @@ export const ReportsModule = () => {
               <AreaChart data={clientGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#0A0A0A" strokeOpacity={0.06} vertical={false} />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#685C43', fontFamily: 'monospace' }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#685C43', fontFamily: 'monospace' }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#685C43', fontFamily: 'monospace' }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#111111', borderColor: '#8E722A', borderRadius: '4px', color: '#F7F5EF', fontSize: '11px', fontFamily: 'monospace' }}
                 />
@@ -280,28 +352,30 @@ export const ReportsModule = () => {
         <AdminCard className="p-5 space-y-4 lg:col-span-1">
           <div className="border-b border-[#0A0A0A]/08 pb-3">
             <h3 className="font-serif font-semibold text-base text-[#111111]">Service Category Mix</h3>
-            <p className="text-[11px] font-mono text-[#685C43]">Distribution of active packages</p>
+            <p className="text-[11px] font-mono text-[#685C43]">Distribution of active packages ({filteredProjects.length} Total)</p>
           </div>
 
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={projectCategoryData}
+                  data={pieDataFiltered}
                   cx="50%"
                   cy="50%"
                   innerRadius={45}
                   outerRadius={70}
-                  paddingAngle={4}
+                  paddingAngle={filteredProjects.length > 0 ? 4 : 0}
                   dataKey="value"
                 >
-                  {projectCategoryData.map((entry, index) => (
+                  {pieDataFiltered.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#111111', borderColor: '#8E722A', borderRadius: '4px', color: '#F7F5EF', fontSize: '11px', fontFamily: 'monospace' }}
-                />
+                {filteredProjects.length > 0 && (
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#111111', borderColor: '#8E722A', borderRadius: '4px', color: '#F7F5EF', fontSize: '11px', fontFamily: 'monospace' }}
+                  />
+                )}
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -344,11 +418,11 @@ export const ReportsModule = () => {
                 </thead>
                 <tbody className="divide-y divide-[#0A0A0A]/08 text-[#111111]">
                   {filteredProjects.slice(0, 5).map((p) => (
-                    <tr key={p.id}>
+                    <tr key={p.id || p._id}>
                       <td className="py-3 px-3 font-semibold">{p.title}</td>
                       <td className="py-3 px-3 font-mono text-[#685C43]">{p.clientName}</td>
                       <td className="py-3 px-3 font-mono">{p.leadStaff}</td>
-                      <td className="py-3 px-3 font-mono font-bold">{p.progressPct}%</td>
+                      <td className="py-3 px-3 font-mono font-bold">{p.progressPct || 0}%</td>
                       <td className="py-3 px-3 text-right font-mono font-bold text-[#8E722A]">{p.status}</td>
                     </tr>
                   ))}
@@ -361,4 +435,3 @@ export const ReportsModule = () => {
     </div>
   );
 };
-

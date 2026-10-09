@@ -44,20 +44,35 @@ const normalizeList = (list) => {
 
 export const AdminDataProvider = ({ children }) => {
   const [data, setData] = useState({
-    dashboardMetrics: fallbackMockData.dashboardMetrics,
-    clients: fallbackMockData.clients,
-    enquiries: fallbackMockData.enquiries,
-    packages: fallbackMockData.packages,
-    services: fallbackMockData.services,
-    projects: fallbackMockData.projects,
-    tasks: fallbackMockData.tasks,
-    payments: fallbackMockData.payments,
-    reviewScanners: fallbackMockData.reviewScanners,
-    staff: fallbackMockData.staff,
-    activityLogs: fallbackMockData.activityLogs,
-    notifications: fallbackMockData.notifications,
-    settings: fallbackMockData.settings,
-    rawMockData: fallbackMockData,
+    dashboardMetrics: {
+      totalClients: 0,
+      activeClients: 0,
+      pendingClients: 0,
+      completedClients: 0,
+      newEnquiries: 0,
+      totalLeads: 0,
+      activeProjects: 0,
+      pendingTasks: 0,
+      totalPaymentCollected: 0,
+      outstandingPayments: 0,
+      activeReviewScanners: 0,
+      totalScans: 0,
+      expiringPackagesCount: 0,
+      overdueTasksCount: 0,
+    },
+    clients: [],
+    enquiries: [],
+    packages: [],
+    services: [],
+    projects: [],
+    tasks: [],
+    payments: [],
+    reviewScanners: [],
+    staff: [],
+    activityLogs: [],
+    notifications: [],
+    settings: fallbackMockData.settings || {},
+    rawMockData: {},
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -122,13 +137,22 @@ export const AdminDataProvider = ({ children }) => {
 
     const totalCollected = payments
       .filter((p) => p.status === 'Paid')
-      .reduce((acc, p) => acc + (Number(p.amount) || Number(p.amountReceived) || 0), 0);
+      .reduce((acc, p) => acc + (Number(p.amountReceived) || Number(p.amount) || 0), 0);
 
     const outstandingPayments = payments
       .filter((p) => p.status === 'Overdue' || p.status === 'Pending' || p.status === 'Partially Paid')
       .reduce((acc, p) => acc + ((Number(p.amount) || 0) - (Number(p.amountReceived) || 0)), 0);
 
     const totalScans = scanners.reduce((acc, s) => acc + (Number(s.totalScans) || Number(s.metrics?.scans) || 0), 0);
+
+    const expiringPackagesCount = clients.filter((c) => {
+      const exp = c.expiryDate || c.packageExpiryDate;
+      if (!exp) return false;
+      const expDate = new Date(exp);
+      if (isNaN(expDate.getTime())) return false;
+      const diffDays = Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 30;
+    }).length;
 
     return {
       ...currentData.dashboardMetrics,
@@ -139,10 +163,11 @@ export const AdminDataProvider = ({ children }) => {
       newEnquiries: enquiries.filter((e) => e.status === 'New').length,
       activeProjects: projects.filter((p) => p.status === 'In Progress' || p.status === 'Planning' || p.status === 'Active').length,
       pendingTasks: tasks.filter((t) => t.status !== 'Completed').length,
-      totalPaymentCollected: totalCollected || 450000,
-      outstandingPayments: outstandingPayments || 75000,
+      totalPaymentCollected: totalCollected,
+      outstandingPayments: outstandingPayments,
       activeReviewScanners: scanners.filter((s) => s.status === 'Active').length,
-      totalScans: totalScans || 525,
+      totalScans: totalScans,
+      expiringPackagesCount: expiringPackagesCount,
     };
   };
 

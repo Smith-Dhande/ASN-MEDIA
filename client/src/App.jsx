@@ -396,6 +396,14 @@ export function App() {
               }
             />
             <Route
+              path="scanners/edit/:id"
+              element={
+                <AdminProtectedRoute moduleKey="scanners">
+                  <ReviewScannersModule />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
               path="scanners/:id"
               element={
                 <AdminProtectedRoute moduleKey="scanners">

@@ -15,8 +15,48 @@ import { ModuleSkeleton } from '../components/ui/LoadingSkeleton';
 import {
   Users, UserPlus, Clock, Mail, Phone, Building, Calendar, CreditCard, ArrowRight,
   CheckCircle2, Edit, Archive, Trash2, Plus, Globe, FileText,
-  Star, Kanban, RefreshCw, AlertTriangle, Download, ArrowLeft, Layers, DollarSign, ExternalLink, ShieldCheck
+  Star, Kanban, RefreshCw, AlertTriangle, AlertCircle, Download, ArrowLeft, Layers, DollarSign, ExternalLink, ShieldCheck
 } from 'lucide-react';
+
+export const getExpiryInfo = (expiryDateStr) => {
+  if (!expiryDateStr) return { isExpiringBeforeMonth: false, diffDays: null, label: 'N/A', badgeType: 'normal' };
+  const exp = new Date(expiryDateStr);
+  if (isNaN(exp.getTime())) return { isExpiringBeforeMonth: false, diffDays: null, label: 'N/A', badgeType: 'normal' };
+
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const expMidnight = new Date(exp.getFullYear(), exp.getMonth(), exp.getDate());
+  const diffDays = Math.ceil((expMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Expiring before a month (within 30 days or already past/expired)
+  const isExpiringBeforeMonth = diffDays <= 30;
+
+  let label = '';
+  let badgeType = 'normal';
+
+  if (diffDays < 0) {
+    label = `Expired (${Math.abs(diffDays)}d ago)`;
+    badgeType = 'expired';
+  } else if (diffDays === 0) {
+    label = 'Expires Today';
+    badgeType = 'urgent';
+  } else if (diffDays === 1) {
+    label = 'Expires Tomorrow';
+    badgeType = 'urgent';
+  } else if (diffDays <= 7) {
+    label = `Expires in ${diffDays} days`;
+    badgeType = 'urgent';
+  } else if (diffDays <= 30) {
+    label = `Expires in ${diffDays} days`;
+    badgeType = 'warning';
+  } else {
+    const months = Math.floor(diffDays / 30);
+    label = `${diffDays} days left (~${months}m)`;
+    badgeType = 'normal';
+  }
+
+  return { isExpiringBeforeMonth, diffDays, label, badgeType };
+};
 
 export const ClientsModule = () => {
   const {
@@ -117,10 +157,15 @@ export const ClientsModule = () => {
     notes: 'Retainer Payment',
   });
 
-  // Reset page when search or filters change
+  // Reset page and default filter when search or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, location.pathname]);
+    if (location.pathname.endsWith('/expiring')) {
+      setStatusFilter('All Expiring (< 30 Days)');
+    } else {
+      setStatusFilter('All');
+    }
+  }, [location.pathname]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -130,22 +175,33 @@ export const ClientsModule = () => {
   // Filter clients based on tab & filters in Directory View
   const filteredClients = clients.filter((client) => {
     const matchesSearch =
-      client.name.toLowerCase().includes(search.toLowerCase()) ||
-      client.company.toLowerCase().includes(search.toLowerCase()) ||
-      client.email.toLowerCase().includes(search.toLowerCase());
-
-    const matchesStatus = statusFilter === 'All' || client.status === statusFilter;
+      (client.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (client.company || '').toLowerCase().includes(search.toLowerCase()) ||
+      (client.email || '').toLowerCase().includes(search.toLowerCase()) ||
+      (client.packageAssigned || '').toLowerCase().includes(search.toLowerCase());
 
     if (isExpiringMode) {
-      const isExpiring =
-        client.expiryDate &&
-        (client.expiryDate.startsWith('2026-04') ||
-          client.expiryDate.startsWith('2026-05') ||
-          client.expiryDate.startsWith('2026-10') ||
-          client.expiryDate.startsWith('2027-03'));
-      return matchesSearch && isExpiring;
+      const info = getExpiryInfo(client.expiryDate || client.packageExpiryDate);
+      if (!matchesSearch) return false;
+
+      if (statusFilter === 'Next 7 Days') {
+        return info.diffDays !== null && info.diffDays >= 0 && info.diffDays <= 7;
+      }
+      if (statusFilter === 'Next 14 Days') {
+        return info.diffDays !== null && info.diffDays >= 0 && info.diffDays <= 14;
+      }
+      if (statusFilter === 'Already Expired') {
+        return info.diffDays !== null && info.diffDays < 0;
+      }
+      if (statusFilter === 'All Clients') {
+        return true;
+      }
+
+      // Default in expiring packages section: packages expiring before a month (<= 30 days or already past)
+      return info.isExpiringBeforeMonth;
     }
 
+    const matchesStatus = statusFilter === 'All' || client.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -291,7 +347,10 @@ export const ClientsModule = () => {
             {row.name ? row.name.charAt(0) : 'C'}
           </div>
           <div>
-            <span className="font-bold text-[#111111] block font-body hover:text-[#8E722A] transition-colors cursor-pointer">
+            <span
+              onClick={() => navigate(`/admin/clients/${row.id}`)}
+              className="font-bold text-[#111111] block font-body hover:text-[#8E722A] transition-colors cursor-pointer"
+            >
               {row.name}
             </span>
             <span className="text-[11px] text-[#685C43]">{row.company}</span>
@@ -303,48 +362,81 @@ export const ClientsModule = () => {
       header: 'ASSIGNED PACKAGE',
       key: 'packageAssigned',
       render: (row) => (
-        <span className="font-mono text-[11px] font-bold text-[#8E722A]">{row.packageAssigned}</span>
+        <span className="font-mono text-[11px] font-bold text-[#8E722A]">{row.packageAssigned || 'Standard Retainer'}</span>
       ),
     },
     {
-      header: 'RETAINER',
+      header: 'MONTHLY RETAINER',
       key: 'monthlyRetainer',
       render: (row) => (
         <span className="font-mono font-bold text-[#111111] text-xs">
-          ₹{row.monthlyRetainer?.toLocaleString('en-IN')}/mo
+          ₹{(Number(row.monthlyRetainer) || 0).toLocaleString('en-IN')}/mo
         </span>
       ),
     },
     {
-      header: 'EXPIRY DATE',
+      header: isExpiringMode ? 'EXPIRY & COUNTDOWN' : 'EXPIRY DATE',
       key: 'expiryDate',
-      render: (row) => <span className="font-mono text-[11px] text-[#685C43]">{row.expiryDate || 'N/A'}</span>,
+      render: (row) => {
+        const info = getExpiryInfo(row.expiryDate || row.packageExpiryDate);
+        return (
+          <div className="space-y-1">
+            <span className="font-mono text-xs text-[#111111] block font-medium">
+              {row.expiryDate || row.packageExpiryDate || 'N/A'}
+            </span>
+            {info.diffDays !== null && (
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  info.badgeType === 'expired'
+                    ? 'bg-red-100 text-red-800 border border-red-200'
+                    : info.badgeType === 'urgent'
+                    ? 'bg-red-50 text-red-700 border border-red-200'
+                    : info.badgeType === 'warning'
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                }`}
+              >
+                <Clock className="w-3 h-3" />
+                {info.label}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: 'STATUS',
       key: 'status',
-      render: (row) => <StatusBadge status={row.status} />,
+      render: (row) => {
+        const info = getExpiryInfo(row.expiryDate || row.packageExpiryDate);
+        if (isExpiringMode && info.badgeType === 'expired') {
+          return <StatusBadge status="Expired" />;
+        }
+        if (isExpiringMode && (info.badgeType === 'urgent' || info.badgeType === 'warning')) {
+          return <StatusBadge status="Expiring Soon" />;
+        }
+        return <StatusBadge status={row.status || 'Active'} />;
+      },
     },
     {
       header: 'ACTION',
       key: 'action',
+      align: 'right',
       render: (row) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => navigate(`/admin/clients/${row.id}`)}
-            className="text-xs font-mono font-bold text-[#8E722A] hover:text-[#111111] uppercase underline cursor-pointer"
+            onClick={() => handleOpenEdit(row)}
+            className="px-2.5 py-1 text-xs font-mono font-bold bg-[#FAF8F3] hover:bg-[#8E722A] text-[#111111] hover:text-white border border-[#0A0A0A]/14 rounded-md transition-colors cursor-pointer"
+            title="Extend or Renew Retainer"
           >
-            View Workspace →
+            {isExpiringMode ? 'Renew Retainer' : 'Edit'}
           </button>
           <button
-            onClick={() => {
-              navigate(`/admin/clients/${row.id}`);
-              setTimeout(() => handleOpenEdit(row), 100);
-            }}
+            onClick={() => navigate(`/admin/clients/${row.id}`)}
             className="p-1 text-[#685C43] hover:text-[#111111]"
-            title="Edit Client"
+            title="View Workspace"
           >
-            <Edit className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       ),
@@ -1307,68 +1399,158 @@ export const ClientsModule = () => {
         ) : (
           /* Main Directory Table View */
           <div className="space-y-6">
-            {/* Quick Stats Summary Grid (4 Cards - Stage 4) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard
-                label="TOTAL CLIENTS"
-                value={clients.length}
-                trend={12}
-                trendLabel="registered accounts"
-                icon={Users}
-                accentColor="gold"
-              />
-              <KpiCard
-                label="ACTIVE RETAINERS"
-                value={clients.filter((c) => c.status === 'Active').length}
-                trend={8}
-                trendLabel="active contracts"
-                icon={CheckCircle2}
-                accentColor="emerald"
-              />
-              <KpiCard
-                label="PENDING ONBOARDING"
-                value={clients.filter((c) => c.status === 'Pending').length}
-                trend={0}
-                trendLabel="requires setup"
-                icon={Clock}
-                accentColor="amber"
-              />
-              <KpiCard
-                label="CONTRACTS EXPIRING"
-                value={
-                  clients.filter(
-                    (c) =>
-                      c.expiryDate &&
-                      (c.expiryDate.includes('2026-04') ||
-                        c.expiryDate.includes('2026-05') ||
-                        c.expiryDate.includes('2026-10') ||
-                        c.expiryDate.includes('2027-03'))
-                  ).length
-                }
-                trend={-4}
-                trendLabel="due within 60 days"
-                icon={AlertTriangle}
-                accentColor="crimson"
-              />
-            </div>
+            {/* Quick Stats Summary Grid */}
+            {isExpiringMode ? (
+              <div className="space-y-4">
+                <div className="bg-[#FAF8F3] border border-[#8E722A]/30 p-4 rounded-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xs bg-[#8E722A]/15 border border-[#8E722A]/30 flex items-center justify-center text-[#8E722A] shrink-0">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#111111]">
+                        Packages Expiring Before a Month
+                      </h4>
+                      <p className="text-xs text-[#685C43]">
+                        Showing client contracts and retainer packages that are expiring within 30 days or overdue for renewal.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setStatusFilter('Next 7 Days')}
+                      className={`px-3 py-1.5 text-2xs font-mono font-bold rounded-xs transition-colors ${
+                        statusFilter === 'Next 7 Days'
+                          ? 'bg-[#A82020] text-white'
+                          : 'bg-[#A82020]/10 text-[#A82020] hover:bg-[#A82020]/20'
+                      }`}
+                    >
+                      Urgent (&le; 7 Days)
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('All Expiring (< 30 Days)')}
+                      className={`px-3 py-1.5 text-2xs font-mono font-bold rounded-xs transition-colors ${
+                        statusFilter === 'All Expiring (< 30 Days)'
+                          ? 'bg-[#111111] text-white'
+                          : 'bg-[#FAF8F3] border border-[#0A0A0A]/14 text-[#111111] hover:bg-[#111111] hover:text-white'
+                      }`}
+                    >
+                      View All (&le; 30 Days)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <KpiCard
+                    label="EXPIRING < 30 DAYS"
+                    value={clients.filter((c) => getExpiryInfo(c.expiryDate).isExpiringBeforeMonth).length}
+                    trend={0}
+                    trendLabel="due within 30 days"
+                    icon={AlertTriangle}
+                    accentColor="gold"
+                  />
+                  <KpiCard
+                    label="URGENT (≤ 7 DAYS)"
+                    value={
+                      clients.filter((c) => {
+                        const info = getExpiryInfo(c.expiryDate);
+                        return info.diffDays !== null && info.diffDays >= 0 && info.diffDays <= 7;
+                      }).length
+                    }
+                    trend={-2}
+                    trendLabel="immediate renewal needed"
+                    icon={Clock}
+                    accentColor="crimson"
+                  />
+                  <KpiCard
+                    label="OVERDUE / EXPIRED"
+                    value={
+                      clients.filter((c) => {
+                        const info = getExpiryInfo(c.expiryDate);
+                        return info.diffDays !== null && info.diffDays < 0;
+                      }).length
+                    }
+                    trend={0}
+                    trendLabel="past expiry date"
+                    icon={AlertCircle}
+                    accentColor="crimson"
+                  />
+                  <KpiCard
+                    label="RETAINER AT RISK"
+                    value={`₹${(
+                      clients
+                        .filter((c) => getExpiryInfo(c.expiryDate).isExpiringBeforeMonth)
+                        .reduce((sum, c) => sum + (Number(c.monthlyRetainer) || 0), 0) / 1000
+                    ).toFixed(0)}k`}
+                    trend={0}
+                    trendLabel="monthly value"
+                    icon={CheckCircle2}
+                    accentColor="amber"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <KpiCard
+                  label="TOTAL CLIENTS"
+                  value={clients.length}
+                  trend={12}
+                  trendLabel="registered accounts"
+                  icon={Users}
+                  accentColor="gold"
+                />
+                <KpiCard
+                  label="ACTIVE RETAINERS"
+                  value={clients.filter((c) => c.status === 'Active').length}
+                  trend={8}
+                  trendLabel="active contracts"
+                  icon={CheckCircle2}
+                  accentColor="emerald"
+                />
+                <KpiCard
+                  label="PENDING ONBOARDING"
+                  value={clients.filter((c) => c.status === 'Pending').length}
+                  trend={0}
+                  trendLabel="requires setup"
+                  icon={Clock}
+                  accentColor="amber"
+                />
+                <KpiCard
+                  label="CONTRACTS EXPIRING"
+                  value={clients.filter((c) => getExpiryInfo(c.expiryDate).isExpiringBeforeMonth).length}
+                  trend={-4}
+                  trendLabel="due within 30 days"
+                  icon={AlertTriangle}
+                  accentColor="crimson"
+                />
+              </div>
+            )}
 
             <FilterBar
-              searchPlaceholder="Search client name, company, email..."
+              searchPlaceholder={
+                isExpiringMode
+                  ? 'Search expiring packages by client, package, or date...'
+                  : 'Search client name, company, email...'
+              }
               searchValue={search}
               onSearchChange={setSearch}
-              filterOptions={['All', 'Active', 'Pending', 'Completed', 'Archived']}
+              filterOptions={
+                isExpiringMode
+                  ? ['All Expiring (< 30 Days)', 'Next 7 Days', 'Next 14 Days', 'Already Expired', 'All Clients']
+                  : ['All', 'Active', 'Pending', 'Completed', 'Archived']
+              }
               selectedFilter={statusFilter}
               onFilterChange={setStatusFilter}
               actions={
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      showToast(`Exporting ${filteredClients.length} client directory records to CSV...`);
+                      showToast(`Exporting ${filteredClients.length} records to CSV...`);
                     }}
                     className="px-3 py-2 text-xs font-mono font-bold bg-[#FAF8F3] border border-[#0A0A0A]/14 text-[#111111] hover:bg-[#8E722A] hover:text-white rounded-xs transition-colors flex items-center gap-1.5"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Export Directory</span>
+                    <span>Export</span>
                   </button>
                   <button
                     onClick={() => navigate('/admin/clients/add')}

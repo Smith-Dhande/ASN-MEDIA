@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -9,20 +9,51 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { ASN_CHART_COLORS, AsnCustomTooltip } from './asnChartTheme';
+import { useAdminData } from '../../context/AdminDataContext';
 
-const clientGrowthData = [
-  { month: 'Jan', growth: 14, acquisition: 8 },
-  { month: 'Feb', growth: 18, acquisition: 12 },
-  { month: 'Mar', growth: 15, acquisition: 4 },
-  { month: 'Apr', growth: 20, acquisition: 8 },
-  { month: 'May', growth: 22, acquisition: 11 },
-  { month: 'Jun', growth: 19, acquisition: 6 },
-  { month: 'Jul', growth: 23, acquisition: 5 },
-  { month: 'Aug', growth: 21, acquisition: 10 },
-  { month: 'Sep', growth: 24, acquisition: 15 },
-];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const ClientGrowthAreaChart = () => {
+  const { clients = [] } = useAdminData();
+
+  const currentDate = new Date();
+  const currentMonthIdx = currentDate.getMonth();
+
+  // Dynamically calculate month-by-month acquisitions and growth from live clients data
+  const clientGrowthData = useMemo(() => {
+    const endMonthIdx = Math.max(currentMonthIdx, 8);
+    const monthsToShow = MONTH_NAMES.slice(0, endMonthIdx + 1);
+
+    let cumulativeCount = 0;
+
+    return monthsToShow.map((mName, mIdx) => {
+      // Acquisitions in this specific month
+      const monthlyAcquisitions = (clients || []).filter((c) => {
+        const dateStr = c.startDate || c.createdAt;
+        if (!dateStr) return false;
+        const cDate = new Date(dateStr);
+        return cDate.getMonth() === mIdx;
+      }).length;
+
+      // If clients have no dates or all are active, distribute or count cumulatively
+      cumulativeCount += monthlyAcquisitions;
+
+      // If clients exist but have no parseable startDates, assign to current month
+      const effectiveGrowth = clients.length > 0 && cumulativeCount === 0 && mIdx === currentMonthIdx
+        ? clients.length
+        : cumulativeCount;
+
+      return {
+        month: mName,
+        growth: effectiveGrowth,
+        acquisition: monthlyAcquisitions,
+      };
+    });
+  }, [clients, currentMonthIdx]);
+
+  const totalClients = clients?.length || 0;
+  const maxGrowth = Math.max(...clientGrowthData.map((d) => d.growth), 0);
+
   return (
     <div className="bg-white rounded-xl p-5 shadow-2xs border border-[#0A0A0A]/06">
       {/* Header */}
@@ -40,7 +71,7 @@ export const ClientGrowthAreaChart = () => {
         <div className="flex items-center gap-4 text-xs font-mono text-[#685C43]">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-[#8E722A]" />
-            <span className="text-[11px]">Portfolio Growth (24 Total)</span>
+            <span className="text-[11px]">Portfolio Growth ({totalClients} Total)</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-[#111111]" />
@@ -83,7 +114,8 @@ export const ClientGrowthAreaChart = () => {
               tick={{ fontSize: 10, fontFamily: 'monospace', fill: ASN_CHART_COLORS.textMuted }}
               axisLine={false}
               tickLine={false}
-              domain={[0, 'dataMax + 4']}
+              domain={[0, maxGrowth > 0 ? 'dataMax + 2' : 5]}
+              allowDecimals={false}
             />
 
             <Tooltip content={<AsnCustomTooltip unit="" />} cursor={{ stroke: '#0A0A0A', strokeOpacity: 0.1, strokeDasharray: '3 3' }} />
@@ -134,7 +166,7 @@ export const ClientGrowthAreaChart = () => {
       {/* Editorial Footer */}
       <div className="mt-3 pt-3 border-t border-[#0A0A0A]/06 flex items-center justify-between text-[11px] font-mono text-[#685C43]">
         <span>2-Series Portfolio & Acquisition Flow</span>
-        <span className="font-bold text-[#111111]">Total Portfolio Peak: 24 Accounts</span>
+        <span className="font-bold text-[#111111]">Total Portfolio Peak: {totalClients} Accounts</span>
       </div>
     </div>
   );

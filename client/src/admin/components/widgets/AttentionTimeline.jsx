@@ -3,9 +3,14 @@ import { Clock, AlertTriangle, CheckCircle2, ArrowUpRight, Inbox } from 'lucide-
 import { Link } from 'react-router-dom';
 
 export const AttentionTimeline = ({ clients = [], payments = [], tasks = [], enquiries = [] }) => {
-  const expiringClients = clients.filter(
-    (c) => c.expiryDate && (c.expiryDate.startsWith('2026-04') || c.expiryDate.startsWith('2026-05') || c.expiryDate.startsWith('2026-10'))
-  );
+  const expiringClients = clients.filter((c) => {
+    const exp = c.expiryDate || c.packageExpiryDate;
+    if (!exp) return false;
+    const expDate = new Date(exp);
+    if (isNaN(expDate.getTime())) return false;
+    const diffDays = Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 30;
+  });
   const overduePayments = payments.filter((p) => p.status === 'Overdue');
   const urgentTasks = tasks.filter((t) => t.status !== 'Completed');
   const newEnquiries = enquiries.filter((e) => e.status === 'New');

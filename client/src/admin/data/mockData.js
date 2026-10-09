@@ -1,4 +1,8 @@
-// Expanded Realistic Mock Data for ASN Media Admin Panel
+const getRelativeDate = (daysFromNow) => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toISOString().split('T')[0];
+};
 
 const baseClients = [
   {
@@ -12,7 +16,7 @@ const baseClients = [
     packageAssigned: "Social Media Retainer (Tier A)",
     monthlyRetainer: 4500,
     startDate: "2025-11-01",
-    expiryDate: "2026-10-31",
+    expiryDate: getRelativeDate(22), // Expiring in 22 days (within 1 month)
     assignedStaff: ["Sarah Jenkins", "Rohan Verma"],
     activeProjectsCount: 2,
     pendingTasksCount: 5,
@@ -31,7 +35,7 @@ const baseClients = [
     packageAssigned: "Video Production & Retainer",
     monthlyRetainer: 7500,
     startDate: "2025-06-15",
-    expiryDate: "2026-04-15", // Expiring soon
+    expiryDate: getRelativeDate(6), // Expiring in 6 days (urgent)
     assignedStaff: ["Vikramaditya S.", "Rohan Verma"],
     activeProjectsCount: 1,
     pendingTasksCount: 4,
@@ -50,7 +54,7 @@ const baseClients = [
     packageAssigned: "Content Creation Suite",
     monthlyRetainer: 3800,
     startDate: "2026-01-10",
-    expiryDate: "2026-04-10", // Expiring soon
+    expiryDate: getRelativeDate(14), // Expiring in 14 days
     assignedStaff: ["Ananya Sen"],
     activeProjectsCount: 2,
     pendingTasksCount: 6,
@@ -69,7 +73,7 @@ const baseClients = [
     packageAssigned: "Brand Strategy & Launch Package",
     monthlyRetainer: 12000,
     startDate: "2026-04-01",
-    expiryDate: "2026-09-30",
+    expiryDate: getRelativeDate(-4), // Expired 4 days ago
     assignedStaff: ["Sarah Jenkins", "Vikramaditya S."],
     activeProjectsCount: 1,
     pendingTasksCount: 3,
@@ -88,7 +92,7 @@ const baseClients = [
     packageAssigned: "Social Media Retainer (Tier B)",
     monthlyRetainer: 3200,
     startDate: "2025-09-01",
-    expiryDate: "2026-08-31",
+    expiryDate: getRelativeDate(85), // 85 days left
     assignedStaff: ["Rohan Verma"],
     activeProjectsCount: 1,
     pendingTasksCount: 2,
@@ -119,7 +123,7 @@ const generatedClients = companyNames.map((comp, idx) => {
   ];
   const retainers = [3200, 3800, 4500, 6000, 7500, 12000];
   const status = statuses[idx % statuses.length];
-  const isExpiringSoon = idx % 5 === 0;
+  const isExpiringSoon = idx % 4 === 0;
 
   return {
     id: `cli_${num}`,
@@ -132,7 +136,7 @@ const generatedClients = companyNames.map((comp, idx) => {
     packageAssigned: packages[idx % packages.length],
     monthlyRetainer: retainers[idx % retainers.length],
     startDate: "2025-08-01",
-    expiryDate: isExpiringSoon ? "2026-04-12" : "2026-11-30",
+    expiryDate: isExpiringSoon ? getRelativeDate(4 + ((idx % 6) * 4)) : getRelativeDate(60 + (idx * 15)),
     assignedStaff: ["Sarah Jenkins"],
     activeProjectsCount: (idx % 3) + 1,
     pendingTasksCount: (idx % 5) + 1,
@@ -880,7 +884,15 @@ export const mockData = {
     newEnquiries: allEnquiries.filter(e => e.status === "New").length,
     activeProjects: allProjects.filter(p => p.status === "In Progress" || p.status === "Planning").length,
     pendingTasks: allTasks.filter(t => t.status !== "Completed").length,
-    expiringPackages: allClients.filter(c => c.expiryDate.startsWith("2026-04")).length,
+    expiringPackages: allClients.filter(c => {
+      if (!c.expiryDate) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const exp = new Date(c.expiryDate);
+      exp.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+      return diffDays <= 30;
+    }).length,
     totalPaymentCollected: allPayments.filter(p => p.status === "Paid").reduce((acc, p) => acc + p.amount, 0),
     outstandingPayments: allPayments.filter(p => p.status === "Overdue" || p.status === "Pending").reduce((acc, p) => acc + p.amount, 0),
     activeReviewScanners: allScanners.filter(s => s.status === "Active").length,
